@@ -59,8 +59,6 @@ def remove_subunits(df_raw):
     filtered_rows = len(df_filtered)
     removed_rows = initial_rows - filtered_rows
 
-    print(df_filtered)
-    print('\n')
     print('initial_rows:', initial_rows)
     print('filtered_rows:', filtered_rows)
     print('removed_rows:', removed_rows)
@@ -151,6 +149,57 @@ def parse_text_variables(df_clean):
 
     return df_clean
 
+def validate_clean_data(df_clean):
+
+    print('FINAL DATA VALIDATION')
+    print('\n')
+
+    #dataset shape
+    print('SHAPE')
+    print(df_clean.shape)
+    print('\n')
+
+    #missing values
+    print('MISSING VALUES')
+    print(df_clean.isna().sum())
+    print('\n')
+
+    #duplicates
+    print('DUPLICATES')
+    print(df_clean.duplicated().sum())
+    print('\n')
+
+    #data types
+    print('DATA TYPES')
+    print(df_clean.dtypes)
+    print('\n')
+
+    #parsed variables
+    print('PARSED VARIABLES')
+    print(df_clean[['rooms', 'bathrooms', 'floor']].head(5))
+    print('\n')
+
+    #transformed variables
+    print('TRANSFORMED VARIABLES')
+    print('\n')
+
+    print('rooms:')
+    print(df_clean['rooms'].value_counts())
+    print('\n')
+
+    print('bathrooms:')
+    print(df_clean['bathrooms'].value_counts())
+    print('\n')
+
+    print('floor:')
+    print(df_clean['floor'].value_counts())
+    print('\n')
+
+    print('elevator:')
+    print(df_clean['elevator'].value_counts())
+
+    return df_clean
+
 
 
 
@@ -183,7 +232,6 @@ print('\n')
 
 #elevator encoding
 df_clean = encode_elevator(df_clean)
-print('ELEVATOR 0/1 ENCODING')
 print(df_clean['elevator'].value_counts())
 print('\n')
 
@@ -191,8 +239,12 @@ print('\n')
 inspect_text_variables(df_clean)
 print('\n')
 df_clean = parse_text_variables(df_clean)
-print(df_clean[['rooms', 'bathrooms', 'floor']].head(5))
-print(df_clean[['rooms', 'bathrooms', 'floor']].dtypes)
+print('\n')
+
+#final data validation
+print('\n')
+df_clean = validate_clean_data(df_clean)
+
 
 
 
