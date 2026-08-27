@@ -8,10 +8,42 @@ from scipy import stats
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
 
 #initial inspection
-df_raw.shape
-df_raw.info()
-df_raw.describe()
-df_raw.isna().sum()
+def inspect_data(df_raw):
+
+    #general info
+    df_raw.info()
+    print(df_raw.shape)
+    print(df_raw.describe())
+
+    print()
+
+    #missing values
+    print(df_raw.isna().sum())
+
+    print()
+
+    #duplicates
+    print(df_raw.duplicated().sum())
+
+    print()
+
+    #categorical variables
+    print(df_raw['category'].value_counts())
+    print(df_raw['unit'].value_counts())
+    print(df_raw['condition'].value_counts())
+    print(df_raw['heating'].value_counts())
+    print(df_raw['typology'].value_counts())
+    print(df_raw['elevator'].value_counts())
+
+#main program
+inspect_data(df_raw)
+
+
+
+
+
+
+
 
 
 
