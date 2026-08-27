@@ -33,6 +33,7 @@ def inspect_data(df_raw):
 def inspect_categorical(df_raw):
 
     print('CATEGORICAL INSPECTION')
+    print('\n')
 
     #categorical variables
     print(df_raw['category'].value_counts())
@@ -113,6 +114,13 @@ def inspect_missing_values(df_clean):
     print('surface_mq missing values:', df_clean['surface_mq'].isna().sum())
     print('price_per_mq missing values:', df_clean['price_per_mq'].isna().sum())
 
+def encode_elevator(df_clean):
+    df_clean = df_clean['elevator'].fillna(0)
+
+    return df_clean
+
+
+
 
 
 
@@ -134,6 +142,7 @@ print('\n')
 df_clean = apply_quality_filters(df_clean)
 print('\n')
 inspect_missing_values(df_clean)
+df_clean = encode_elevator(df_clean)
 
 
 
