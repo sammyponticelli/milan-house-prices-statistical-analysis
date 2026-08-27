@@ -33,7 +33,6 @@ def inspect_data(df_raw):
 def inspect_categorical(df_raw):
 
     print('CATEGORICAL INSPECTION')
-    print('\n')
 
     #categorical variables
     print(df_raw['category'].value_counts())
@@ -47,6 +46,7 @@ def inspect_categorical(df_raw):
     print(df_raw['typology'].value_counts())
     print('\n')
     print(df_raw['elevator'].value_counts())
+    print('\n')
 
 def remove_subunits(df_raw):
 
@@ -69,6 +69,7 @@ def remove_subunits(df_raw):
 def inspect_quality_variables(df_clean):
 
     print('QUALITY VARIABLES INSPECTION')
+    print('\n')
 
     print(df_clean['category'].value_counts())
     print('\n')
