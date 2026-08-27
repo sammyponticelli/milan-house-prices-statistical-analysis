@@ -63,6 +63,43 @@ def inspect_quality_variables(df_clean):
     print('\n')
     print(df_clean['price_is_range'].value_counts())
 
+def apply_quality_filters(df_clean):
+
+    initial_rows = len(df_clean)
+    print('initial rows:', initial_rows)
+
+    #category filter
+    condition = df_clean['category']=='Residenziale'
+    df_filtered = df_clean[condition]
+    print('category rows:', len(df_filtered))
+
+    #is_outlier filter
+    condition = df_filtered['is_outlier']==0
+    df_filtered = df_filtered[condition]
+    print('is_outlier rows:', len(df_filtered))
+
+    #price_is_range filter
+    condition = df_filtered['price_is_range']==0
+    df_filtered = df_filtered[condition]
+    print('price_is_range rows:', len(df_filtered))
+
+    print('final rows:', len(df_filtered))
+    removed_rows = initial_rows - len(df_filtered)
+    print('removed rows:', removed_rows)
+
+    return df_filtered
+
+def inspect_missing_values(df_clean):
+     
+    print(df_clean['price'].isna().sum())
+    print('\n')
+    print(df_clean['surface_mq'].isna().sum())
+    print('\n')
+    print(df_clean['price_per_mq'].isna().sum())
+
+
+
+
 
 
    
@@ -77,6 +114,10 @@ inspect_categorical(df_raw)
 df_clean = remove_subunits(df_raw)
 print('\n')
 inspect_quality_variables(df_clean)
+print('\n')
+df_clean = apply_quality_filters(df_clean)
+print('\n')
+inspect_missing_values(df_clean)
 
 
 
