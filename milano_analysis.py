@@ -120,9 +120,37 @@ def encode_elevator(df_clean):
     return df_clean
 
 def inspect_text_variables(df_clean):
+    print('TEXT VARIABLES INSPECTION')
+    print('\n')
     print(df_clean['rooms'].value_counts())
+    print('\n')
     print(df_clean['bathrooms'].value_counts())
+    print('\n')
     print(df_clean['floor'].value_counts())
+
+def parse_text_variables(df_clean):
+
+    print('TEXT VARIABLES PARSING')
+
+    #rooms
+    df_clean['rooms'] = df_clean['rooms'].str.extract(r'(\d+)')
+    df_clean['rooms'] = pd.to_numeric(df_clean['rooms'])
+
+    #bathrooms
+    df_clean['bathrooms'] = df_clean['bathrooms'].str.extract(r'(\d+)')
+    df_clean['bathrooms'] = pd.to_numeric(df_clean['bathrooms'])
+
+    #floor
+    df_clean['floor'] = df_clean['floor'].str.lower()
+    df_clean['floor'] = df_clean['floor'].replace({
+        'piano terra': '0',
+        'piano rialzato': '0.5'
+    })
+    df_clean['floor'] = df_clean['floor'].str.extract(r'(\d+(?:\.\d+)?)')
+    df_clean['floor'] = pd.to_numeric(df_clean['floor'])
+
+    return df_clean
+
 
 
 
@@ -157,9 +185,14 @@ print('\n')
 df_clean = encode_elevator(df_clean)
 print('ELEVATOR 0/1 ENCODING')
 print(df_clean['elevator'].value_counts())
+print('\n')
 
 #Data type / Text parsing
 inspect_text_variables(df_clean)
+print('\n')
+df_clean = parse_text_variables(df_clean)
+print(df_clean[['rooms', 'bathrooms', 'floor']].head())
+print(df_clean[['rooms', 'bathrooms', 'floor']].dtypes)
 
 
 
