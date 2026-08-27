@@ -131,6 +131,9 @@ def parse_text_variables(df_clean):
     print('TEXT VARIABLES PARSING')
 
     #rooms
+    room_ranges = df_clean['rooms'].str.contains(r'\d+\s*-\s*\d+', na=False)
+    df_clean = df_clean[~room_ranges]
+
     df_clean['rooms'] = df_clean['rooms'].str.extract(r'(\d+)')
     df_clean['rooms'] = pd.to_numeric(df_clean['rooms'])
 
@@ -140,11 +143,16 @@ def parse_text_variables(df_clean):
 
     #floor
     df_clean['floor'] = df_clean['floor'].str.lower()
+
     df_clean['floor'] = df_clean['floor'].replace({
         'piano terra': '0',
         'piano rialzato': '0.5'
     })
-    df_clean['floor'] = df_clean['floor'].str.extract(r'(\d+(?:\.\d+)?)')
+
+    df_clean['floor'] = df_clean['floor'].str.extract(
+        r'(\d+(?:\.\d+)?)'
+    )
+
     df_clean['floor'] = pd.to_numeric(df_clean['floor'])
 
     return df_clean
