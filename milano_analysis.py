@@ -13,26 +13,28 @@ def inspect_data(df_raw):
     #general info
     df_raw.info()
     print(df_raw.shape)
-    print(df_raw.describe())
-
-    print()
+    print('\n')
+    print(df_raw.describe(include='number'))
 
     #missing values
     print(df_raw.isna().sum())
-
-    print()
+    print('\n')
 
     #duplicates
     print(df_raw.duplicated().sum())
-
-    print()
+    print('\n')
 
     #categorical variables
     print(df_raw['category'].value_counts())
+    print('\n')
     print(df_raw['unit'].value_counts())
+    print('\n')
     print(df_raw['condition'].value_counts())
+    print('\n')
     print(df_raw['heating'].value_counts())
+    print('\n')
     print(df_raw['typology'].value_counts())
+    print('\n')
     print(df_raw['elevator'].value_counts())
 
 #main program
