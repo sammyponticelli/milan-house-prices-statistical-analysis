@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import statsmodels.api as sm
+#import statsmodels.api as sm
 from scipy import stats
 
 #load data
@@ -37,8 +37,28 @@ def inspect_data(df_raw):
     print('\n')
     print(df_raw['elevator'].value_counts())
 
+def remove_subunits(df_raw):
+    condition = df_raw['unit']==0
+    df_filtered = df_raw[condition]
+
+    initial_rows = len(df_raw['unit'])
+    filtered_rows = len(df_filtered)
+    removed_rows = initial_rows - filtered_rows
+
+    print(df_filtered)
+    print('\n')
+    print('initial_rows:', initial_rows)
+    print('filtered_rows:', filtered_rows)
+    print('removed_rows:', removed_rows)
+
+    return df_filtered
+
+
+
 #main program
 inspect_data(df_raw)
+print('\n')
+remove_subunits(df_raw)
 
 
 
