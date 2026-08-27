@@ -11,20 +11,29 @@ df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
 def inspect_data(df_raw):
 
     #general info
+    print('DATA INSPECTION')
     df_raw.info()
+    print('\n')
+    print('SHAPE')
     print(df_raw.shape)
     print('\n')
+    print('NUMERICAL DESCRIPTION')
     print(df_raw.describe(include='number'))
+    print('\n')
 
     #missing values
+    print('MISSING VALUES')
     print(df_raw.isna().sum())
     print('\n')
 
     #duplicates
-    print(df_raw.duplicated().sum())
+    print('duplicates:', df_raw.duplicated().sum())
     print('\n')
 
 def inspect_categorical(df_raw):
+
+    print('CATEGORICAL INSPECTION')
+    print('\n')
 
     #categorical variables
     print(df_raw['category'].value_counts())
@@ -40,6 +49,8 @@ def inspect_categorical(df_raw):
     print(df_raw['elevator'].value_counts())
 
 def remove_subunits(df_raw):
+
+    print('SUBUNITS REMOVED')
     condition = df_raw['unit']==0
     df_filtered = df_raw[condition]
 
@@ -57,6 +68,8 @@ def remove_subunits(df_raw):
 
 def inspect_quality_variables(df_clean):
 
+    print('QUALITY VARIABLES INSPECTION')
+
     print(df_clean['category'].value_counts())
     print('\n')
     print(df_clean['is_outlier'].value_counts())
@@ -64,6 +77,8 @@ def inspect_quality_variables(df_clean):
     print(df_clean['price_is_range'].value_counts())
 
 def apply_quality_filters(df_clean):
+
+    print('QUALITY FILTERS APPLIED')
 
     initial_rows = len(df_clean)
     print('initial rows:', initial_rows)
@@ -90,12 +105,12 @@ def apply_quality_filters(df_clean):
     return df_filtered
 
 def inspect_missing_values(df_clean):
+
+    print('MISSING VALUES INSPECTION')
      
-    print(df_clean['price'].isna().sum())
-    print('\n')
-    print(df_clean['surface_mq'].isna().sum())
-    print('\n')
-    print(df_clean['price_per_mq'].isna().sum())
+    print('price missing values:', df_clean['price'].isna().sum())
+    print('surface_mq missing values:', df_clean['surface_mq'].isna().sum())
+    print('price_per_mq missing values:', df_clean['price_per_mq'].isna().sum())
 
 
 
