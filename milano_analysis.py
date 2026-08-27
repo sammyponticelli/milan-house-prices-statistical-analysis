@@ -119,6 +119,11 @@ def encode_elevator(df_clean):
 
     return df_clean
 
+def inspect_text_variables(df_clean):
+    print(df_clean['rooms'].value_counts())
+    print(df_clean['bathrooms'].value_counts())
+    print(df_clean['floor'].value_counts())
+
 
 
 
@@ -135,17 +140,26 @@ print('\n')
 inspect_categorical(df_raw)
 
 #data cleaning
+
+#quality filters
 df_clean = remove_subunits(df_raw)
 print('\n')
 inspect_quality_variables(df_clean)
 print('\n')
 df_clean = apply_quality_filters(df_clean)
 print('\n')
+
+#missing values
 inspect_missing_values(df_clean)
 print('\n')
+
+#elevator encoding
 df_clean = encode_elevator(df_clean)
 print('ELEVATOR 0/1 ENCODING')
 print(df_clean['elevator'].value_counts())
+
+#Data type / Text parsing
+inspect_text_variables(df_clean)
 
 
 
