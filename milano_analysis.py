@@ -126,7 +126,7 @@ def inspect_text_variables(df_clean):
     print('\n')
     print(df_clean['bathrooms'].value_counts())
     print('\n')
-    print(df_clean['floor'].value_counts())
+    print(df_clean['floor'].value_counts().head(5))
 
 def parse_text_variables(df_clean):
 
@@ -191,7 +191,7 @@ print('\n')
 inspect_text_variables(df_clean)
 print('\n')
 df_clean = parse_text_variables(df_clean)
-print(df_clean[['rooms', 'bathrooms', 'floor']].head())
+print(df_clean[['rooms', 'bathrooms', 'floor']].head(5))
 print(df_clean[['rooms', 'bathrooms', 'floor']].dtypes)
 
 
