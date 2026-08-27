@@ -12,7 +12,7 @@ Il resoconto dei risultati sarà in **[REPORT.md](REPORT.md)**. Questo file docu
 
 ## Dataset
 
-`immobiliare_milano_vendita.csv` — **18.017 righe × 29 colonne**, annunci di vendita residenziale a Milano.
+`immobiliare_milano_vendita.csv` — **18.017 righe × 31 colonne**, annunci di vendita residenziale a Milano.
 
 ### Variabili usate nell'analisi
 
@@ -40,6 +40,7 @@ Il resoconto dei risultati sarà in **[REPORT.md](REPORT.md)**. Questo file docu
 | Variabile | Descrizione |
 |---|---|
 | `id`, `unit` | Identificativo dell'annuncio e indice della sotto-unità (vedi sotto) |
+| `nil_id`, `nil` | NIL di appartenenza già presente nella sorgente — la fase 10 ricalcola comunque l'assegnazione per point-in-polygon |
 | `url`, `title`, `address` | Testo libero / identificativi |
 | `city`, `region` | Costanti (`Milano` / `Lombardia`) |
 | `category` | `Residenziale` (16.469), `Nuove costruzioni` (137), `Palazzi - Edifici` (135) — usata come **filtro**, non come variabile |
@@ -50,23 +51,54 @@ Il resoconto dei risultati sarà in **[REPORT.md](REPORT.md)**. Questo file docu
 
 ## Pulizia dei dati
 
-Cinque decisioni, applicate prima di calcolare qualunque statistica.
+**Fase completata.** Cinque decisioni, applicate prima di calcolare qualunque statistica. Implementate in `milano_analysis.py` come funzioni separate — ogni passaggio stampa un prima/dopo, così la cascata dei filtri resta ispezionabile e non solo dichiarata.
 
-**1. Eliminare le sotto-unità.** Gli annunci multi-unità (progetti di nuova costruzione) compaiono come una riga padre `unit = 0` più una riga per appartamento `unit = 1, 2, 3…`, **tutte con lo stesso `price` ripetuto**. Contarle significherebbe contare fino a 37 volte un unico prezzo. Le righe delle sotto-unità non hanno `category`, quindi il filtro `category == 'Residenziale'` le rimuove di conseguenza; il filtro viene comunque applicato in modo esplicito, così l'intenzione resta visibile nel codice.
+**1. Eliminare le sotto-unità.** Gli annunci multi-unità (progetti di nuova costruzione) compaiono come una riga padre `unit = 0` più una riga per appartamento `unit = 1, 2, 3…`, **tutte con lo stesso `price` ripetuto** (fino a 36 sotto-unità per un unico prezzo). Il filtro `unit == 0` rimuove **1.276 righe**: 18.017 → **16.741**. Le righe delle sotto-unità non hanno `category`, quindi il filtro successivo le rimuoverebbe comunque — ma il filtro esplicito su `unit` tiene l'intenzione visibile nel codice invece di affidarla a un effetto collaterale.
 
-**2. Applicare i flag di qualità della sorgente.** Si scartano `is_outlier == 1` (1.567 righe) e `price_is_range == 1` (1.321 righe). Il secondo è importante: un annuncio il cui prezzo è un *intervallo* ha un `price` che non è un'osservazione reale.
+**2. Applicare i flag di qualità della sorgente.** Tre filtri in cascata, ed è la cascata il dato interessante:
 
-**3. Scartare le righe senza prezzo o superficie.** `price`, `surface_mq`, `price_per_mq` sono le tre variabili da cui dipende tutto il resto.
+| Filtro | Righe rimaste | Rimosse |
+|---|---|---|
+| dopo `unit == 0` | 16.741 | — |
+| `category == 'Residenziale'` | 16.469 | 272 (`Nuove costruzioni` 137, `Palazzi - Edifici` 135) |
+| `is_outlier == 0` | 16.346 | 123 |
+| `price_is_range == 0` | 16.346 | **0** |
 
-**4. `elevator` — il mancante significa "no".** La colonna assume i valori `1.0` (13.572) e `NaN` (4.445), senza alcuno zero. Non è una colonna con dei buchi: è una codifica a sola-presenza, il campo viene scritto solo quando l'annuncio dichiara l'ascensore. Viene quindi ricodificata in una dummy 0/1 pulita.
+Sul file grezzo i flag marcano 1.567 outlier e 1.321 prezzi-intervallo, ma **la quasi totalità sta nelle righe già eliminate**: gli annunci con prezzo espresso come intervallo sono per costruzione i progetti multi-unità, e dopo i primi due filtri non ne resta nemmeno uno. Il filtro `price_is_range` a valle non scarta nulla — resta nel codice come verifica esplicita, non come passaggio attivo. È un caso in cui il risultato atteso (≈1.300 righe da scartare) e il risultato reale (zero) divergono, e la spiegazione della divergenza vale più del numero.
+
+**3. Scartare le righe senza prezzo o superficie.** `price`, `surface_mq`, `price_per_mq` sono le tre variabili da cui dipende tutto il resto. Nel file grezzo mancano rispettivamente in 50, 29 e 79 righe; dopo i filtri di qualità i mancanti sono **0, 0 e 0** — anche qui i buchi erano concentrati nelle righe già rimosse. Il passaggio si è quindi ridotto a un controllo di conferma.
+
+**4. `elevator` — il mancante significa "no".** Nel file grezzo la colonna assume i valori `1.0` (13.572) e `NaN` (4.445), senza alcuno zero. Non è una colonna con dei buchi: è una codifica a sola-presenza, il campo viene scritto solo quando l'annuncio dichiara l'ascensore. Viene quindi ricodificata in una dummy 0/1 pulita — sul dataset filtrato: **12.367 con ascensore, 3.979 senza**.
 
 L'alternativa — trattare i `NaN` come dato mancante vero — comporterebbe l'esclusione automatica di **4.445 annunci, il 27% del dataset**, dalla regressione della fase 8. Ed è un'esclusione non casuale: gli annunci col campo vuoto sono sistematicamente immobili più vecchi, piccoli e periferici, cioè proprio il segmento che serve per stimare l'effetto dell'ascensore. Si perderebbero i dati *e* si introdurrebbe una distorsione, invece di evitarla.
 
 Il rischio residuo della codifica scelta è che qualche immobile abbia davvero l'ascensore senza che il campo sia compilato. Quei casi finiscono etichettati come "senza" e **attenuano** β₅ verso lo zero: la stima dell'effetto risulta più piccola del vero, mai più grande. È un errore conservativo. La fase 8 lo verifica con un'analisi di sensibilità esplicita (vedi sotto) anziché limitarsi a dichiarare l'assunzione.
 
-**5. Parsare le colonne testuali sporche.** `rooms` (`5+` → 5, `2 - 4` → scartato, dato che gli intervalli compaiono solo sulle righe multi-unità già rimosse), `bathrooms` (`3+` → 3), `floor` (`piano terra` → 0, `piano rialzato` → 0,5, `3 piano` → 3).
+**5. Parsare le colonne testuali sporche.** Tre colonne da stringa a numerico:
 
-**Risultato: 16.346 annunci puliti** (90,7% del file grezzo), di cui **16.333 geolocalizzati**. Tutte e 32 le macrozone sopravvivono con almeno 115 annunci ciascuna — abbastanza per i confronti fra gruppi delle fasi 4-5 senza dover accorpare categorie.
+- `rooms` — `5+` → 5 (609 righe), gli intervalli tipo `2 - 4` vengono scartati per regex, ma sul dataset filtrato **non ne resta nessuno**: comparivano solo sulle righe multi-unità, già rimosse al passaggio 1. Nessuna riga persa qui.
+- `bathrooms` — `3+` → 3 (313 righe).
+- `floor` — normalizzato a minuscolo, poi `piano terra` → 0 (2.035 righe) e `piano rialzato` → 0,5 (1.267 righe); per il resto si estrae il primo numero, così `3 piano` → 3.
+
+**Risultato: 16.346 annunci puliti** (90,7% del file grezzo), di cui **16.333 geolocalizzati**. Tutte e 32 le macrozone sopravvivono con almeno 115 annunci ciascuna — abbastanza per i confronti fra gruppi delle fasi 4-5 senza dover accorpare categorie. Zero duplicati.
+
+### Mancanti residui sul dataset pulito
+
+Le tre variabili portanti sono complete; ciò che resta scoperto sta sulle variabili di contorno, e va gestito in fase di modellazione anziché a monte:
+
+| Variabile | Mancanti | Quota | Nota |
+|---|---|---|---|
+| `bathrooms` | 844 | 5,2% | rilevante per la fase 8 |
+| `condition` | 587 | 3,6% | idem |
+| `floor` | 544 | 3,3% | testo non riconducibile a un numero |
+| `bedrooms` | 444 | 2,7% | fuori dal modello principale |
+| `rooms` | 106 | 0,6% | |
+| `lat` / `lon` / `nil` | 13 | 0,1% | escluse dalla mappa della fase 10 |
+| `microzone` | 57 | 0,3% | `macrozone` ne manca solo 12 |
+
+La regressione della fase 8 usa `rooms`, `bathrooms`, `condition` e `floor` insieme: a listwise deletion la perdita cumulata va stimata prima di fissare la specificazione, ed è una decisione che appartiene a quella fase.
+
+**Un'anomalia da tenere d'occhio:** `floor` contiene un valore 41 (una riga) — a Milano è implausibile e va ispezionato prima della fase 7, dove entrano i residui. Gli altri estremi (19, 21) sono compatibili con le torri di Porta Nuova / CityLife.
 
 ---
 
@@ -224,7 +256,7 @@ La pipeline per rigenerarlo:
 
 | Fase | Stato |
 |---|---|
-| 0. Pulizia dei dati | ⬜ da fare |
+| 0. Pulizia dei dati | ✅ **completata** — 18.017 → 16.346 annunci |
 | 1. Descriptive Statistics | ⬜ da fare |
 | 2. Probability & Distributions | ⬜ da fare |
 | 3. Sampling & Confidence Intervals | ⬜ da fare |
@@ -242,8 +274,8 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi
-├── immobiliare_milano_vendita.csv      # dataset (18.017 × 29)
+├── milano_analysis.py                  # script di analisi — pipeline di pulizia completata
+├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
 ├── charts/                             # figure, salvate in PNG
 ├── REPORT.md                           # resoconto dei risultati
@@ -251,6 +283,23 @@ milano_real_estate_analysis/
 ```
 
 Dataset e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
+
+La pipeline di pulizia, nell'ordine in cui viene eseguita in `milano_analysis.py`:
+
+```
+inspect_data              → info, shape, describe, mancanti, duplicati sul file grezzo
+inspect_categorical       → value_counts delle variabili categoriali
+remove_subunits           → filtro unit == 0                        18.017 → 16.741
+inspect_quality_variables → controllo dei flag prima di filtrare
+apply_quality_filters     → category / is_outlier / price_is_range  16.741 → 16.346
+inspect_missing_values    → conferma: price, surface_mq, price_per_mq completi
+encode_elevator           → NaN → 0, dummy 0/1
+inspect_text_variables    → forma reale di rooms, bathrooms, floor prima del parsing
+parse_text_variables      → da stringa a numerico
+validate_clean_data       → shape, mancanti, duplicati, dtype, distribuzioni finali
+```
+
+Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
