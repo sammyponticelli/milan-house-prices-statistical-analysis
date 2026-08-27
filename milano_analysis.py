@@ -24,6 +24,8 @@ def inspect_data(df_raw):
     print(df_raw.duplicated().sum())
     print('\n')
 
+def inspect_categorical(df_raw):
+
     #categorical variables
     print(df_raw['category'].value_counts())
     print('\n')
@@ -53,12 +55,29 @@ def remove_subunits(df_raw):
 
     return df_filtered
 
+def inspect_quality_variables(df_clean):
+
+    print(df_clean['category'].value_counts())
+    print('\n')
+    print(df_clean['is_outlier'].value_counts())
+    print('\n')
+    print(df_clean['price_is_range'].value_counts())
 
 
+
+   
 #main program
+
+#data inspection
 inspect_data(df_raw)
 print('\n')
-remove_subunits(df_raw)
+inspect_categorical(df_raw)
+
+#data cleaning
+df_clean = remove_subunits(df_raw)
+print('\n')
+inspect_quality_variables(df_clean)
+
 
 
 
