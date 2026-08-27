@@ -115,7 +115,7 @@ def inspect_missing_values(df_clean):
     print('price_per_mq missing values:', df_clean['price_per_mq'].isna().sum())
 
 def encode_elevator(df_clean):
-    df_clean = df_clean['elevator'].fillna(0)
+    df_clean['elevator'] = df_clean['elevator'].fillna(0)
 
     return df_clean
 
@@ -142,8 +142,10 @@ print('\n')
 df_clean = apply_quality_filters(df_clean)
 print('\n')
 inspect_missing_values(df_clean)
+print('\n')
 df_clean = encode_elevator(df_clean)
-
+print('ELEVATOR 0/1 ENCODING')
+print(df_clean['elevator'].value_counts())
 
 
 
