@@ -208,6 +208,58 @@ def validate_clean_data(df_clean):
 
     return df_clean
 
+def descriptive_statistics(df_clean):
+
+    variables = ['price','surface_mq','price_per_mq']
+
+    descriptive_data = df_clean[variables]
+
+    # Measures of central tendency
+    mean = descriptive_data.mean()
+    median = descriptive_data.median()
+    mode = descriptive_data.mode().iloc[0]
+
+    # Measures of dispersion
+    variance = descriptive_data.var()
+    std = descriptive_data.std()
+    maximum = descriptive_data.max()
+    minimum = descriptive_data.min()
+    q1 = descriptive_data.quantile(0.25)
+    q3 = descriptive_data.quantile(0.75)
+    iqr = q3 - q1
+    range_ = maximum - minimum
+    cv = std/mean
+    skewness = descriptive_data.skew()
+
+    #table
+    statistics = {
+        'Mean': mean,
+        'Median': median,
+        'Mode': mode,
+        'Var': variance,
+        'Std': std,
+        'Max': maximum,
+        'Min': minimum,
+        'Q1': q1,
+        'Q3': q3,
+        'IQR': iqr,
+        'Range': range_,
+        'CV': cv,
+        'Skewness': skewness
+    }
+    statistics_df = pd.DataFrame(statistics).round(2)
+
+    print(statistics_df)
+
+    return statistics_df
+
+def plot_boxplots(df_clean):
+
+    variables = ['price','surface_mq','price_per_mq']
+    
+
+
+
 
 
 
@@ -252,6 +304,14 @@ print('\n')
 #final data validation
 print('\n')
 df_clean = validate_clean_data(df_clean)
+print('\n')
+
+# PHASE 1 - DESCRIPTIVE STATISTICS
+print('\n')
+print('PHASE 1 - DESCRIPTIVE STATISTICS')
+print('\n')
+descriptive_statistics(df_clean)
+print('\n')
 
 
 
