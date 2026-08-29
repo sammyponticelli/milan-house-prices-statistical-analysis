@@ -256,7 +256,23 @@ def descriptive_statistics(df_clean):
 def plot_boxplots(df_clean):
 
     variables = ['price','surface_mq','price_per_mq']
-    
+    box_plot_data = df_clean[variables]
+
+    fig, axes = plt.subplots(1,3)
+    axes[0].boxplot(box_plot_data['price'])
+    axes[0].set_title('Price')
+    axes[0].set_ylabel('Price (€)')
+
+    axes[1].boxplot(box_plot_data['surface_mq'])
+    axes[1].set_title('Surface (m²)')
+    axes[1].set_ylabel('Surface (m²)')
+
+    axes[2].boxplot(box_plot_data['price_per_mq'])
+    axes[2].set_title('Price per m²')
+    axes[2].set_ylabel('Price per m² (€ / m²)')
+
+    plt.tight_layout()
+    plt.show()
 
 
 
@@ -312,6 +328,7 @@ print('PHASE 1 - DESCRIPTIVE STATISTICS')
 print('\n')
 descriptive_statistics(df_clean)
 print('\n')
+plot_boxplots(df_clean)
 
 
 
