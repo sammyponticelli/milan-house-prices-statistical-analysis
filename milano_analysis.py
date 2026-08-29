@@ -274,6 +274,43 @@ def plot_boxplots(df_clean):
     plt.tight_layout()
     plt.show()
 
+def plot_hist(df_clean):
+
+    variables = ['price', 'surface_mq','price_per_mq']
+    hist_data = df_clean[variables]
+    mean = hist_data.mean()
+    median = hist_data.median()
+
+    fig, axes = plt.subplots(1,3)
+    axes[0].hist(hist_data['price'], bins=30)
+    axes[0].set_title('Price')
+    axes[0].set_ylabel('Frequency')
+    axes[0].axvline(mean['price'], linestyle='--', color='red', label='Mean')
+    axes[0].axvline(median['price'], linestyle='--', color='green', label='Median')
+    axes[0].legend()
+
+
+    axes[1].hist(hist_data['surface_mq'], bins=30)
+    axes[1].set_title('Surface (m²)')
+    axes[1].set_ylabel('Frequency')
+    axes[1].axvline(mean['surface_mq'], linestyle='--', color='red', label='Mean')
+    axes[1].axvline(median['surface_mq'], linestyle='--', color='green', label='Median')
+    axes[1].legend()
+
+    axes[2].hist(hist_data['price_per_mq'], bins=30)
+    axes[2].set_title('Price per m² (€/m²)')
+    axes[2].set_ylabel('Frequency')
+    axes[2].axvline(mean['price_per_mq'], linestyle='--', color='red', label='Mean')
+    axes[2].axvline(median['price_per_mq'], linestyle='--', color='green', label='Median')
+    axes[2].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+       
+
+
+
 
 
 
@@ -329,6 +366,12 @@ print('\n')
 descriptive_statistics(df_clean)
 print('\n')
 plot_boxplots(df_clean)
+
+#PHASE 2 — PROBABILITY & DISTRIBUTIONS
+print('\n')
+print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
+plot_hist(df_clean)
+
 
 
 
