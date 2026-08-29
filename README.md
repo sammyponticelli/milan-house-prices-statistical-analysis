@@ -106,7 +106,7 @@ La regressione della fase 8 usa `rooms`, `bathrooms`, `condition` e `floor` insi
 
 ### Phase 1 — Descriptive Statistics
 
-Media, mediana, moda, varianza, deviazione standard, quartili, range e coefficiente di variazione, calcolati sulle tre variabili centrali: `price`, `surface_mq`, `price_per_mq`.
+**Fase completata.** Media, mediana, moda, varianza, deviazione standard, minimo, massimo, quartili, IQR, range, coefficiente di variazione e asimmetria, calcolati sulle tre variabili centrali: `price`, `surface_mq`, `price_per_mq` e raccolti in un'unica tabella (`descriptive_statistics`). A corredo, un **box plot** per ciascuna delle tre variabili (`plot_boxplots`), che rende visibile la stessa asimmetria che i numeri dichiarano: baffo superiore lunghissimo e una nuvola fitta di punti oltre il terzo quartile.
 
 Il punto della fase è il confronto **fra** le variabili, non i numeri in sé:
 
@@ -120,10 +120,16 @@ Due cose da leggerci dentro. Primo, media ≫ mediana ovunque: le distribuzioni 
 
 ### Phase 2 — Probability & Distributions
 
-- Distribuzione empirica e **istogrammi** di `price` e `price_per_mq`, con media e mediana marcate sul grafico perché l'asimmetria si veda.
-- **Percentili** (p1, p5, p10, p25, p50, p75, p90, p95, p99) — su una distribuzione come questa una tabella di percentili è molto più informativa di una media.
-- Confronto con la **distribuzione normale**: curva normale sovrapposta all'istogramma, **Q-Q plot**, asimmetria e curtosi.
-- **Trasformazione logaritmica.** `log(price)` ha un'asimmetria di **0,66** contro 5,68 del prezzo grezzo — abbastanza vicina alla simmetria da rendere difendibile l'apparato parametrico delle fasi 4-8. Le due scale vengono mostrate affiancate.
+**Fase in corso.** Fatto finora:
+
+- ✅ Distribuzione empirica e **istogrammi** delle tre variabili centrali (`plot_hist`), con media e mediana marcate da due linee verticali sul grafico perché l'asimmetria si veda invece di essere dedotta dalla tabella della fase 1.
+- ✅ **Q-Q plot** contro la normale per le stesse tre variabili (`plot_qq`, via `scipy.stats.probplot`). La coda destra si stacca dalla diagonale in modo netto: è la stessa asimmetria di prima, letta sui quantili.
+
+Ancora da fare:
+
+- ⬜ **Percentili** (p1, p5, p10, p25, p50, p75, p90, p95, p99) — su una distribuzione come questa una tabella di percentili è molto più informativa di una media.
+- ⬜ **Curva normale sovrapposta** all'istogramma e **curtosi** accanto all'asimmetria già calcolata in fase 1, per chiudere il confronto con la normale.
+- ⬜ **Trasformazione logaritmica.** `log(price)` dovrebbe portare l'asimmetria vicino a zero contro il 5,68 del prezzo grezzo — abbastanza vicina alla simmetria da rendere difendibile l'apparato parametrico delle fasi 4-8. Le due scale vanno mostrate affiancate.
 
 Una nota di metodo: con n = 16.346 i test formali di normalità (Shapiro-Wilk, D'Agostino) rifiutano l'ipotesi nulla su qualunque dataset, perché la potenza nel rilevare una deviazione irrilevante è di fatto pari a 1. La fase si appoggia quindi ai **Q-Q plot e agli indici di forma**, spiegando perché il test non viene usato.
 
@@ -257,8 +263,8 @@ La pipeline per rigenerarlo:
 | Fase | Stato |
 |---|---|
 | 0. Pulizia dei dati | ✅ **completata** — 18.017 → 16.346 annunci |
-| 1. Descriptive Statistics | ⬜ da fare |
-| 2. Probability & Distributions | ⬜ da fare |
+| 1. Descriptive Statistics | ✅ **completata** — tabella statistiche + box plot |
+| 2. Probability & Distributions | 🟡 **in corso** — istogrammi e Q-Q plot fatti; mancano percentili, curva normale, log |
 | 3. Sampling & Confidence Intervals | ⬜ da fare |
 | 4. Hypothesis Testing | ⬜ da fare |
 | 5. ANOVA | ⬜ da fare |
@@ -274,19 +280,23 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pipeline di pulizia completata
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-2
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
+├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure, salvate in PNG
-├── REPORT.md                           # resoconto dei risultati
+├── charts/                             # figure (ancora vuota: i grafici escono a schermo)
+├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
-Dataset e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
+Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-La pipeline di pulizia, nell'ordine in cui viene eseguita in `milano_analysis.py`:
+I grafici delle fasi 1-2 sono per ora mostrati a schermo con `plt.show()`. Il salvataggio in PNG dentro `charts/` va aggiunto quando i grafici saranno definitivi — prima è solo rumore su disco.
+
+La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
 ```
+# pulizia
 inspect_data              → info, shape, describe, mancanti, duplicati sul file grezzo
 inspect_categorical       → value_counts delle variabili categoriali
 remove_subunits           → filtro unit == 0                        18.017 → 16.741
@@ -297,13 +307,21 @@ encode_elevator           → NaN → 0, dummy 0/1
 inspect_text_variables    → forma reale di rooms, bathrooms, floor prima del parsing
 parse_text_variables      → da stringa a numerico
 validate_clean_data       → shape, mancanti, duplicati, dtype, distribuzioni finali
+
+# fase 1
+descriptive_statistics    → tabella 13 statistiche × 3 variabili
+plot_boxplots             → box plot di price, surface_mq, price_per_mq
+
+# fase 2
+plot_hist                 → istogrammi con media e mediana marcate
+plot_qq                   → Q-Q plot contro la normale
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati, `scipy.stats` per le fasi 3-6, `statsmodels` per le fasi 5, 7 e 8, `matplotlib` per i grafici.
+`pandas` e `numpy` per il lavoro sui dati, `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot della fase 2), `statsmodels` per le fasi 5, 7 e 8, `matplotlib` per i grafici.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 

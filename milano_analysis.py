@@ -258,7 +258,7 @@ def plot_boxplots(df_clean):
     variables = ['price','surface_mq','price_per_mq']
     box_plot_data = df_clean[variables]
 
-    fig, axes = plt.subplots(1,3)
+    fig, axes = plt.subplots(1,3, figsize=(15,5))
     axes[0].boxplot(box_plot_data['price'])
     axes[0].set_title('Price')
     axes[0].set_ylabel('Price (€)')
@@ -281,7 +281,7 @@ def plot_hist(df_clean):
     mean = hist_data.mean()
     median = hist_data.median()
 
-    fig, axes = plt.subplots(1,3)
+    fig, axes = plt.subplots(1,3, figsize=(15,5))
     axes[0].hist(hist_data['price'], bins=30)
     axes[0].set_title('Price')
     axes[0].set_ylabel('Frequency')
@@ -306,6 +306,26 @@ def plot_hist(df_clean):
 
     plt.tight_layout()
     plt.show()
+
+def plot_qq(df_clean):
+    variables = ['price', 'surface_mq', 'price_per_mq']
+    qq_data = df_clean[variables]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15,5))
+    stats.probplot(qq_data['price'], dist='norm', plot=axes[0])
+    axes[0].set_title('Price')
+
+    stats.probplot(qq_data['surface_mq'], dist='norm', plot=axes[1])
+    axes[1].set_title('Surface (m²)')
+
+    stats.probplot(qq_data['price_per_mq'], dist='norm', plot=axes[2])
+    axes[2].set_title('Price per m² (€/m²)')
+
+    plt.tight_layout()
+    plt.show()
+
+
+
 
        
 
@@ -371,6 +391,7 @@ plot_boxplots(df_clean)
 print('\n')
 print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
 plot_hist(df_clean)
+plot_qq(df_clean)
 
 
 
