@@ -373,6 +373,53 @@ def distribution_shape(df_clean):
 
      return shape_df
 
+def plot_normal_distribution(df_clean):
+    variables = ['price', 'surface_mq', 'price_per_mq']
+    normal_data = df_clean[variables]
+    mean_price = normal_data['price'].mean()
+    std_price = normal_data['price'].std()
+    mean_surface = normal_data['surface_mq'].mean()
+    std_surface = normal_data['surface_mq'].std()
+    mean_price_mq = normal_data['price_per_mq'].mean()
+    std_price_mq = normal_data['price_per_mq'].std()
+
+    fig, axes = plt.subplots(1,3)
+
+    #price normal curve
+    x_price = np.linspace(normal_data['price'].min(),
+                          normal_data['price'].max(), 
+                          100)
+    normal_curve = stats.norm.pdf(x_price, mean_price, std_price)
+    axes[0].hist(normal_data['price'], bins=30, density=True)
+    axes[0].plot(x_price, normal_curve)
+    axes[0].set_title('Price')
+
+    #surface normal curve
+    x_surface = np.linspace(normal_data['surface_mq'].min(),
+                              normal_data['surface_mq'].max(), 
+                              100)
+    normal_curve = stats.norm.pdf(x_surface, mean_surface, std_surface)
+    axes[1].hist(normal_data['surface_mq'], bins=30, density=True)
+    axes[1].plot(x_surface, normal_curve)
+    axes[1].set_title('Surface (m²)')
+
+    #price per mq curve
+    x_price_mq = np.linspace(normal_data['price_per_mq'].min(),
+                              normal_data['price_per_mq'].max(), 
+                              100)
+    normal_curve = stats.norm.pdf(x_price_mq, mean_price_mq, std_price_mq)
+    axes[2].hist(normal_data['price_per_mq'], bins=30, density=True)
+    axes[2].plot(x_price_mq, normal_curve)
+    axes[2].set_title('Price per m² (€/m²)')
+
+    plt.tight_layout()
+    plt.show()
+
+    
+                          
+
+    
+
 
 
 
@@ -449,6 +496,7 @@ plot_qq(df_clean)
 percentile_statistics(df_clean)
 print('\n')
 distribution_shape(df_clean)
+plot_normal_distribution(df_clean)
 
 
 
