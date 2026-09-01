@@ -357,6 +357,23 @@ def percentile_statistics(df_clean):
 
     return percentile_df
 
+def distribution_shape(df_clean):
+     variables = ['price', 'surface_mq', 'price_per_mq']
+     shape_data = df_clean[variables]
+     kurtosis = shape_data.kurt()
+     skewness = shape_data.skew()
+
+     shape_statistics = {
+         'Skewness': skewness,
+         'Kurtosis': kurtosis
+     }
+
+     shape_df = pd.DataFrame(shape_statistics).round(2)
+     print(shape_df)
+
+     return shape_df
+
+
 
 
 
@@ -426,9 +443,12 @@ plot_boxplots(df_clean)
 #PHASE 2 — PROBABILITY & DISTRIBUTIONS
 print('\n')
 print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
+print('\n')
 plot_hist(df_clean)
 plot_qq(df_clean)
 percentile_statistics(df_clean)
+print('\n')
+distribution_shape(df_clean)
 
 
 
