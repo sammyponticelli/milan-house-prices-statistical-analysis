@@ -415,6 +415,16 @@ def plot_normal_distribution(df_clean):
     plt.tight_layout()
     plt.show()
 
+def log_transform(df_clean):
+    log_data = df_clean.copy()
+    log_data['log_price'] = np.log(log_data['price'])
+    log_skewness = log_data['log_price'].skew()
+    log_kurtosis = log_data['log_price'].kurt()
+    print('Log Price Skewness:', round(log_skewness, 2))
+    print('Log Price Kurtosis:', round(log_kurtosis, 2))
+
+
+
     
                           
 
@@ -497,6 +507,9 @@ percentile_statistics(df_clean)
 print('\n')
 distribution_shape(df_clean)
 plot_normal_distribution(df_clean)
+print('\n')
+log_transform(df_clean)
+
 
 
 
