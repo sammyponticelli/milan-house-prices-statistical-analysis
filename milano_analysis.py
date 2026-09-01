@@ -272,6 +272,7 @@ def plot_boxplots(df_clean):
     axes[2].set_ylabel('Price per m² (€ / m²)')
 
     plt.tight_layout()
+    plt.savefig('charts/boxplots.png', dpi=150)
     plt.show()
 
 def plot_hist(df_clean):
@@ -305,6 +306,7 @@ def plot_hist(df_clean):
     axes[2].legend()
 
     plt.tight_layout()
+    plt.savefig('charts/histograms.png', dpi=150)
     plt.show()
 
 def plot_qq(df_clean):
@@ -322,6 +324,7 @@ def plot_qq(df_clean):
     axes[2].set_title('Price per m² (€/m²)')
 
     plt.tight_layout()
+    plt.savefig('charts/qq_plots.png', dpi=150)
     plt.show()
 
 def percentile_statistics(df_clean):
@@ -383,7 +386,7 @@ def plot_normal_distribution(df_clean):
     mean_price_mq = normal_data['price_per_mq'].mean()
     std_price_mq = normal_data['price_per_mq'].std()
 
-    fig, axes = plt.subplots(1,3)
+    fig, axes = plt.subplots(1,3, figsize=(15,5))
 
     #price normal curve
     x_price = np.linspace(normal_data['price'].min(),
@@ -413,6 +416,7 @@ def plot_normal_distribution(df_clean):
     axes[2].set_title('Price per m² (€/m²)')
 
     plt.tight_layout()
+    plt.savefig('charts/normal_distribution.png', dpi=150)
     plt.show()
 
 def log_transform(df_clean):
@@ -430,9 +434,9 @@ def plot_log_comparison(df_clean):
     std_price = log_data['price'].std()
     mean_log_price = log_data['log_price'].mean()
     std_log_price = log_data['log_price'].std()
-    
 
-    fig, axes = plt.subplots(1,2)
+
+    fig, axes = plt.subplots(1,2, figsize=(10,5))
 
     #plot hist and normal curve price
     x_price = np.linspace(log_data['price'].min(), 
@@ -453,6 +457,7 @@ def plot_log_comparison(df_clean):
     axes[1].set_title('Log Price')
 
     plt.tight_layout()
+    plt.savefig('charts/log_comparison.png', dpi=150)
     plt.show()
 
 

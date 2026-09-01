@@ -120,16 +120,37 @@ Due cose da leggerci dentro. Primo, media ≫ mediana ovunque: le distribuzioni 
 
 ### Phase 2 — Probability & Distributions
 
-**Fase in corso.** Fatto finora:
+**Fase completata.** Cinque passaggi, tutti sulle stesse tre variabili centrali:
 
-- ✅ Distribuzione empirica e **istogrammi** delle tre variabili centrali (`plot_hist`), con media e mediana marcate da due linee verticali sul grafico perché l'asimmetria si veda invece di essere dedotta dalla tabella della fase 1.
-- ✅ **Q-Q plot** contro la normale per le stesse tre variabili (`plot_qq`, via `scipy.stats.probplot`). La coda destra si stacca dalla diagonale in modo netto: è la stessa asimmetria di prima, letta sui quantili.
+- **Istogrammi** (`plot_hist`), con media e mediana marcate da due linee verticali sul grafico perché l'asimmetria si veda invece di essere dedotta dalla tabella della fase 1.
+- **Q-Q plot** contro la normale (`plot_qq`, via `scipy.stats.probplot`). La coda destra si stacca dalla diagonale in modo netto: è la stessa asimmetria di prima, letta sui quantili.
+- **Percentili** p1, p5, p10, p25, p50, p75, p90, p95, p99 (`percentile_statistics`) — su una distribuzione come questa una tabella di percentili dice molto più di una media.
+- **Indici di forma** (`distribution_shape`): curtosi accanto all'asimmetria, in un'unica tabella.
+- **Trasformazione logaritmica** di `price` (`log_transform`), con le due scale mostrate affiancate — istogramma e curva normale sovrapposta a sinistra sul prezzo grezzo, a destra su `log(price)` (`plot_log_comparison`). La curva normale sovrapposta all'istogramma delle tre variabili in scala originale sta in `plot_normal_distribution`.
 
-Ancora da fare:
+**Percentili**
 
-- ⬜ **Percentili** (p1, p5, p10, p25, p50, p75, p90, p95, p99) — su una distribuzione come questa una tabella di percentili è molto più informativa di una media.
-- ⬜ **Curva normale sovrapposta** all'istogramma e **curtosi** accanto all'asimmetria già calcolata in fase 1, per chiudere il confronto con la normale.
-- ⬜ **Trasformazione logaritmica.** `log(price)` dovrebbe portare l'asimmetria vicino a zero contro il 5,68 del prezzo grezzo — abbastanza vicina alla simmetria da rendere difendibile l'apparato parametrico delle fasi 4-8. Le due scale vanno mostrate affiancate.
+| | p1 | p10 | p25 | p50 | p75 | p90 | p99 |
+|---|---|---|---|---|---|---|---|
+| `price` (€) | 85.950 | 190.800 | 260.000 | 379.000 | 600.000 | 1.090.000 | 3.511.000 |
+| `surface_mq` (m²) | 25 | 45 | 56 | 80 | 110 | 160 | 360 |
+| `price_per_mq` (€/m²) | 1.576 | 3.045 | 3.941 | 5.073 | 6.695 | 8.762 | 15.399 |
+
+Il salto p90 → p99 sul prezzo è di quasi 2,5 M€: il 10% più caro del mercato è un mondo a parte, e da solo spiega perché la media della fase 1 stia a € 570.105 contro una mediana di € 379.000. Sul prezzo al m² la stessa distanza si comprime — da € 8.762 a € 15.399, meno del doppio — perché normalizzare per la superficie toglie di mezzo la dimensione e lascia solo il premio di posizione e di qualità.
+
+**Forma della distribuzione**
+
+| | asimmetria | curtosi (in eccesso) |
+|---|---|---|
+| `price` | 5,68 | **54,98** |
+| `surface_mq` | 3,42 | 19,79 |
+| `price_per_mq` | 1,83 | 5,88 |
+
+La curtosi aggiunge l'informazione che l'asimmetria da sola non dà: 54,98 contro lo 0 della normale significa code enormemente più pesanti: gli eventi estremi non sono rari come una normale con la stessa media e la stessa deviazione standard prevederebbe. La curva normale sovrapposta all'istogramma lo rende evidente: la gaussiana adattata su media e σ del prezzo è troppo larga al centro e troppo sottile in coda — non sbaglia di poco, sbaglia la forma.
+
+**Trasformazione logaritmica**
+
+`log(price)` porta l'asimmetria da **5,68 a 0,66** e la curtosi da **54,98 a 1,34**. Non è una normale — non lo è mai nessun dato reale — ma è abbastanza vicino alla simmetria da rendere difendibile l'apparato parametrico delle fasi 4-8, ed è la giustificazione empirica della specificazione log-log della fase 7. Sul prezzo al m² il logaritmo fa ancora meglio (asimmetria −0,07).
 
 Una nota di metodo: con n = 16.346 i test formali di normalità (Shapiro-Wilk, D'Agostino) rifiutano l'ipotesi nulla su qualunque dataset, perché la potenza nel rilevare una deviazione irrilevante è di fatto pari a 1. La fase si appoggia quindi ai **Q-Q plot e agli indici di forma**, spiegando perché il test non viene usato.
 
@@ -264,8 +285,8 @@ La pipeline per rigenerarlo:
 |---|---|
 | 0. Pulizia dei dati | ✅ **completata** — 18.017 → 16.346 annunci |
 | 1. Descriptive Statistics | ✅ **completata** — tabella statistiche + box plot |
-| 2. Probability & Distributions | 🟡 **in corso** — istogrammi e Q-Q plot fatti; mancano percentili, curva normale, log |
-| 3. Sampling & Confidence Intervals | ⬜ da fare |
+| 2. Probability & Distributions | ✅ **completata** — istogrammi, Q-Q plot, percentili, indici di forma, log |
+| 3. Sampling & Confidence Intervals | 🟡 **prossima fase** |
 | 4. Hypothesis Testing | ⬜ da fare |
 | 5. ANOVA | ⬜ da fare |
 | 6. Correlation | ⬜ da fare |
@@ -284,14 +305,14 @@ milano_real_estate_analysis/
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure (ancora vuota: i grafici escono a schermo)
+├── charts/                             # figure delle fasi 1-2 in PNG (5 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-I grafici delle fasi 1-2 sono per ora mostrati a schermo con `plt.show()`. Il salvataggio in PNG dentro `charts/` va aggiunto quando i grafici saranno definitivi — prima è solo rumore su disco.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti dalle fasi 1-2 sono `boxplots.png`, `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png`; lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -315,13 +336,18 @@ plot_boxplots             → box plot di price, surface_mq, price_per_mq
 # fase 2
 plot_hist                 → istogrammi con media e mediana marcate
 plot_qq                   → Q-Q plot contro la normale
+percentile_statistics     → tabella 9 percentili × 3 variabili
+distribution_shape        → asimmetria e curtosi × 3 variabili
+plot_normal_distribution  → istogrammi in densità + curva normale sovrapposta
+log_transform             → asimmetria e curtosi di log(price)
+plot_log_comparison       → price contro log(price), affiancati, con curva normale
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati, `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot della fase 2), `statsmodels` per le fasi 5, 7 e 8, `matplotlib` per i grafici.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot e per le curve normali sovrapposte agli istogrammi), `statsmodels` per le fasi 5, 7 e 8 — l'import è ancora commentato in cima allo script e va riattivato alla fase 5 — e `matplotlib` per i grafici.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
