@@ -324,6 +324,42 @@ def plot_qq(df_clean):
     plt.tight_layout()
     plt.show()
 
+def percentile_statistics(df_clean):
+    variables = ['price', 'surface_mq', 'price_per_mq']
+    percentile_data = df_clean[variables]
+
+    #percentile calculation
+    p1 = percentile_data.quantile(0.01)
+    p5 = percentile_data.quantile(0.05)
+    p10 = percentile_data.quantile(0.10)
+    p25 = percentile_data.quantile(0.25)
+    p50 = percentile_data.quantile(0.50)
+    p75 = percentile_data.quantile(0.75)
+    p90 = percentile_data.quantile(0.90)
+    p95 = percentile_data.quantile(0.95)
+    p99 = percentile_data.quantile(0.99)
+
+    #table
+    percentiles = {
+        'P1': p1,
+        'P5': p5,
+        'P10': p10,
+        'P25': p25,
+        'P50': p50,
+        'P75': p75,
+        'P90': p90,
+        'P95': p95,
+        'P99': p99,
+    }
+
+    percentile_df = pd.DataFrame(percentiles).round(2)
+    print(percentile_df)
+
+    return percentile_df
+
+
+
+
 
 
 
@@ -392,6 +428,7 @@ print('\n')
 print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
 plot_hist(df_clean)
 plot_qq(df_clean)
+percentile_statistics(df_clean)
 
 
 
