@@ -423,6 +423,39 @@ def log_transform(df_clean):
     print('Log Price Skewness:', round(log_skewness, 2))
     print('Log Price Kurtosis:', round(log_kurtosis, 2))
 
+def plot_log_comparison(df_clean):
+    log_data = df_clean.copy()
+    log_data['log_price'] = np.log(log_data['price'])
+    mean_price = log_data['price'].mean()
+    std_price = log_data['price'].std()
+    mean_log_price = log_data['log_price'].mean()
+    std_log_price = log_data['log_price'].std()
+    
+
+    fig, axes = plt.subplots(1,2)
+
+    #plot hist and normal curve price
+    x_price = np.linspace(log_data['price'].min(), 
+                          log_data['price'].max(), 
+                              100)
+    normal_curve = stats.norm.pdf(x_price, mean_price, std_price)
+    axes[0].hist(log_data['price'], bins=30, density=True)
+    axes[0].plot(x_price, normal_curve)
+    axes[0].set_title('Price')
+
+    #plot hist log price
+    x_log_price = np.linspace(log_data['log_price'].min(),
+                              log_data['log_price'].max(), 
+                              100)
+    normal_curve = stats.norm.pdf(x_log_price, mean_log_price, std_log_price)
+    axes[1].hist(log_data['log_price'], bins=30, density=True)
+    axes[1].plot(x_log_price, normal_curve)
+    axes[1].set_title('Log Price')
+
+    plt.tight_layout()
+    plt.show()
+
+
 
 
     
@@ -509,6 +542,8 @@ distribution_shape(df_clean)
 plot_normal_distribution(df_clean)
 print('\n')
 log_transform(df_clean)
+plot_log_comparison(df_clean)
+
 
 
 
