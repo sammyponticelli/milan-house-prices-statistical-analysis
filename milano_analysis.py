@@ -463,42 +463,53 @@ def plot_log_comparison(df_clean):
 def population_parameters(df, variable):
     mean = df[variable].mean()
     std = df[variable].std(ddof=0)
-    print(mean)
-    print(std)
+    print('mean:', mean)
+    print('std:', std)
 
+def draw_sample(df_clean):
+
+    sample_means_30=[]
+    sample_means_100=[]
+    sample_means_500=[]
+
+    for i in range(1000):
+        sample = df_clean.sample(30, replace=False)
+        sample_mean = sample['price_per_mq'].mean()
+        sample_means_30.append(sample_mean)
+
+    for i in range(1000):
+        sample = df_clean.sample(100, replace=False)
+        sample_mean = sample['price_per_mq'].mean()
+        sample_means_100.append(sample_mean)
+
+    for i in range(1000):
+        sample = df_clean.sample(500, replace=False)
+        sample_mean = sample['price_per_mq'].mean()
+        sample_means_500.append(sample_mean)
+
+    fig, axes = plt.subplot(1,3)
+
+    axes[0].hist(sample_means_30, bins=30, density=True)
+    axes[0].set_title('n = 30')
+
+    axes[1].hist(sample_means_100, bins=30, density=True)
+    axes[1].set_title('n = 100')
+
+    axes[2].hist(sample_means_500, bins=30, density=True)
+    axes[2].set_title('n = 500')
+
+    plt.tight_layout()
+    plt.savefig('charts/sampling_distributions.png', dpi=150)
+    plt.show()
+
+    return sample_means_30, sample_means_100, sample_means_500
+
+    
 
     
 
 
-
-
     
-                          
-
-    
-
-
-
-
-
-
-
-
-       
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
 #main program
 
 #data inspection
@@ -564,6 +575,7 @@ print('\n')
 print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
 print('\n')
 population_parameters(df_clean, 'price_per_mq')
+draw_sample(df_clean)
 
 
 
