@@ -466,7 +466,11 @@ def population_parameters(df, variable):
     print('mean:', mean)
     print('std:', std)
 
+    return mean, std
+
 def draw_sample(df_clean):
+
+    population_std = df_clean['price_per_mq'].std(ddof=0)
 
     sample_means_30=[]
     sample_means_100=[]
@@ -487,7 +491,7 @@ def draw_sample(df_clean):
         sample_mean = sample['price_per_mq'].mean()
         sample_means_500.append(sample_mean)
 
-    fig, axes = plt.subplot(1,3)
+    fig, axes = plt.subplots(1,3)
 
     axes[0].hist(sample_means_30, bins=30, density=True)
     axes[0].set_title('n = 30')
@@ -502,7 +506,24 @@ def draw_sample(df_clean):
     plt.savefig('charts/sampling_distributions.png', dpi=150)
     plt.show()
 
-    return sample_means_30, sample_means_100, sample_means_500
+    empirical_se_30 = np.std(sample_means_30)
+    empirical_se_100 = np.std(sample_means_100)
+    empirical_se_500 = np.std(sample_means_500)
+
+    theoretical_se_30 = population_std / np.sqrt(30)
+    theoretical_se_100 = population_std / np.sqrt(100)
+    theoretical_se_500 = population_std / np.sqrt(500)
+
+    se_data = {
+        'n': [30, 100, 500],
+        'Empirical SE': [empirical_se_30, empirical_se_100, empirical_se_500],
+        'Theorical SE': [theoretical_se_30, theoretical_se_100, theoretical_se_500]
+    }
+
+    se_df = pd.DataFrame(se_data)
+    print(se_df)
+
+    return se_df
 
     
 
