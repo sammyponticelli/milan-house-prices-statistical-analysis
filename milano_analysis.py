@@ -460,6 +460,15 @@ def plot_log_comparison(df_clean):
     plt.savefig('charts/log_comparison.png', dpi=150)
     plt.show()
 
+def population_parameters(df, variable):
+    mean = df[variable].mean()
+    std = df[variable].std(ddof=0)
+    print(mean)
+    print(std)
+
+
+    
+
 
 
 
@@ -548,6 +557,16 @@ plot_normal_distribution(df_clean)
 print('\n')
 log_transform(df_clean)
 plot_log_comparison(df_clean)
+print('\n')
+print('\n')
+
+#PHASE 3 - SAMPLING & CONFIDENCE INTERVALS
+print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
+print('\n')
+population_parameters(df_clean, 'price_per_mq')
+
+
+
 
 
 
