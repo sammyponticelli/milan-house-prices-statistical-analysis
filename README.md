@@ -72,7 +72,7 @@ Sul file grezzo i flag marcano 1.567 outlier e 1.321 prezzi-intervallo, ma **la 
 
 L'alternativa — trattare i `NaN` come dato mancante vero — comporterebbe l'esclusione automatica di **4.445 annunci, il 27% del dataset**, dalla regressione della fase 8. Ed è un'esclusione non casuale: gli annunci col campo vuoto sono sistematicamente immobili più vecchi, piccoli e periferici, cioè proprio il segmento che serve per stimare l'effetto dell'ascensore. Si perderebbero i dati *e* si introdurrebbe una distorsione, invece di evitarla.
 
-Il rischio residuo della codifica scelta è che qualche immobile abbia davvero l'ascensore senza che il campo sia compilato. Quei casi finiscono etichettati come "senza" e **attenuano** β₅ verso lo zero: la stima dell'effetto risulta più piccola del vero, mai più grande. È un errore conservativo. La fase 8 lo verifica con un'analisi di sensibilità esplicita (vedi sotto) anziché limitarsi a dichiarare l'assunzione.
+Il rischio residuo della codifica scelta è che qualche immobile abbia davvero l'ascensore senza che il campo sia compilato. Quei casi finiscono etichettati come "senza" e **attenuano** β₅ verso lo zero: la stima dell'effetto risulta più piccola del vero, mai più grande. È un errore conservativo, e la fase 8 stima β₅ = 0,0789 sapendo che è semmai una sottostima. Una verifica empirica dell'assunzione non è però possibile — il perché sta nella fase 8, ed è a sua volta una conseguenza della codifica a sola-presenza.
 
 **5. Parsare le colonne testuali sporche.** Tre colonne da stringa a numerico:
 
@@ -96,7 +96,7 @@ Le tre variabili portanti sono complete; ciò che resta scoperto sta sulle varia
 | `lat` / `lon` / `nil` | 13 | 0,1% | escluse dalla mappa della fase 10 |
 | `microzone` | 57 | 0,3% | `macrozone` ne manca solo 12 |
 
-La regressione della fase 8 usa `rooms`, `bathrooms`, `condition` e `floor` insieme: a listwise deletion la perdita cumulata va stimata prima di fissare la specificazione, ed è una decisione che appartiene a quella fase.
+La regressione della fase 8 usa `rooms`, `bathrooms`, `condition` e `floor` insieme, e a listwise deletion la perdita cumulata è risultata di **1.707 righe, il 10,4%**: il modello completo gira su 14.639 annunci. I mancanti si sovrappongono solo in parte, quindi il costo totale è inferiore alla somma delle singole quote ma superiore alla più grande di esse.
 
 **Un'anomalia da tenere d'occhio:** `floor` contiene un valore 41 (una riga) — a Milano è implausibile e va ispezionato prima della fase 7, dove entrano i residui. Gli altri estremi (19, 21) sono compatibili con le torri di Porta Nuova / CityLife.
 
@@ -399,13 +399,90 @@ log(Price) = β₀ + β₁·log(Surface) + β₂·Rooms + β₃·Bathrooms + β�
            + β₅·Elevator + β₆·Floor + β₇·Heating + β₈·Luxury + dummy di zona + ε
 ```
 
-- **Multicollinearità** e **VIF**. `surface_mq`, `rooms` e `bathrooms` misurano cose che si sovrappongono, e i loro VIF lo mostreranno. La fase riporta la tabella dei VIF, elimina o accorpa ciò che supera la soglia convenzionale di 5, e mostra l'effetto della rimozione sui coefficienti — il punto essendo che la collinearità gonfia gli errori standard e destabilizza i coefficienti senza intaccare l'R².
-- **Dummy di zona**. Le 32 macrozone entrano come variabili dummy con una categoria di riferimento, ed è ciò che rende possibile la conclusione della fase 9: separa "questo appartamento è caro perché è grande" da "questo appartamento è caro perché è a Brera".
-- **R² adjusted** contro R² semplice, e il motivo per cui la correzione serve quando in gioco ci sono ~40 regressori.
-- **Significatività di ogni coefficiente**, segnalando esplicitamente quelli che perdono significatività nel momento in cui si controlla per la zona.
-- **Analisi dei residui** sul modello completo, più **errori standard robusti (HC3)**.
-- **Analisi di sensibilità su `elevator`.** Il modello viene stimato due volte: una con la dummy 0/1 su tutte le righe (la scelta di pulizia adottata) e una sul solo sottoinsieme di **13.572 righe col campo effettivamente compilato**. Se β₅ e la sua significatività non si muovono, la codifica non incide e lo si dichiara; se si muovono, lo scarto è a sua volta un risultato da riportare. È la differenza fra un'assunzione dichiarata e un'assunzione verificata.
-- **Tabella di confronto fra modelli**: semplice → log-log → modello completo, su R² adjusted, AIC e comportamento dei residui.
+**Fase completata.** Il modello è scritto in forma di formula (`sm.formula.ols`), così `C(macrozone)` e `C(heating)` generano da sole le rispettive dummy: 31 per le macrozone e 2 per il riscaldamento, con la prima categoria in ordine alfabetico come riferimento. Sette funzioni sotto `multiple_regression_phase`.
+
+**Il campione si restringe.** La regressione richiede tutte le variabili contemporaneamente, e la listwise deletion costa **1.707 righe: 16.346 → 14.639**, il 10,4%. È il prezzo cumulato dei mancanti sparsi su `bathrooms` (5,2%), `condition` (3,6%) e `floor` (3,3%) — la stima annunciata nella sezione sulla pulizia, ora misurata. Tutti i numeri di questa fase valgono su quelle 14.639 righe, comprese le due specificazioni della tabella di confronto finale, rifittate sullo stesso sottoinsieme perché AIC e R² siano confrontabili.
+
+**Multicollinearità: niente da rimuovere** (`vif_analysis`)
+
+| variabile | VIF |
+|---|---|
+| `log_surface` | **4,67** |
+| `rooms` | **4,17** |
+| `bathrooms` | 2,54 |
+| `luxury` | 1,26 |
+| `elevator` | 1,11 |
+| `floor` | 1,11 |
+| `condition_numeric` | 1,06 |
+
+La correlazione fra i tre predittori dimensionali vista nella fase 6 (0,71-0,75) si traduce in VIF di 4,67 e 4,17: alti, vicini alla soglia convenzionale di 5, ma **sotto**. Nessuna variabile viene quindi eliminata, e la tabella serve a documentare una decisione presa sui numeri anziché a giustificarne una già presa. Vale la pena essere espliciti sul significato: un VIF di 4,67 dice che l'errore standard di `log_surface` è √4,67 ≈ 2,2 volte quello che sarebbe con predittori scorrelati. La collinearità non è assente, è tollerata.
+
+**Il modello completo** (`multiple_regression`)
+
+| | coefficiente | p |
+|---|---|---|
+| `log_surface` | **0,8019** | < 0,001 |
+| `luxury` | **0,3642** | < 0,001 |
+| `bathrooms` | 0,0893 | < 0,001 |
+| `condition_numeric` | 0,0811 | < 0,001 |
+| `elevator` | 0,0789 | < 0,001 |
+| `floor` | 0,0121 | < 0,001 |
+| `rooms` | −0,0018 | **0,593** |
+| `heating` autonomo | −0,0035 | **0,779** |
+| `heating` centralizzato | −0,0108 | **0,387** |
+
+**R² = 0,9062 · R² adjusted = 0,9059 · AIC = −4.441**
+
+I due R² distano 0,0003 nonostante i ~40 regressori: con n = 14.639 la penalizzazione dell'aggiustamento è minima, e il confronto serve appunto a mostrare che qui il rischio di sovradattamento non si materializza — cosa che con 40 regressori e poche centinaia di osservazioni sarebbe andata diversamente.
+
+Trattandosi di variabile dipendente logaritmica, i coefficienti si leggono come variazioni percentuali approssimate: un bagno in più è associato a un prezzo **+8,9%**, l'ascensore a **+7,9%**, un gradino nella scala di `condition` a **+8,1%**, un piano più in alto a **+1,2%**, il flag `luxury` a **+44%** (qui l'approssimazione lineare non basta più: e^0,3642 − 1 = 0,439).
+
+**L'elasticità della superficie scende da 1,09 a 0,80.** Nella fase 7 `log_surface` era l'unico regressore e assorbiva tutto ciò che correla con la dimensione; qui `bathrooms` e `rooms` sono nel modello e se ne prendono una parte. È lo stesso fenomeno della fase 6 visto dall'altro lato, e il motivo per cui il coefficiente di una regressione semplice e quello di una multipla non sono la stessa quantità: rispondono a domande diverse.
+
+**Che cosa cambia quando si controlla per la zona** (`zone_comparison`)
+
+Lo stesso modello stimato due volte, con e senza le dummy di macrozona:
+
+| | coef senza zona | p senza zona | coef con zona | p con zona |
+|---|---|---|---|---|
+| `log_surface` | 0,7813 | < 0,001 | 0,8019 | < 0,001 |
+| `luxury` | **0,6791** | < 0,001 | **0,3642** | < 0,001 |
+| `elevator` | **0,1196** | < 0,001 | **0,0789** | < 0,001 |
+| `condition_numeric` | 0,0589 | < 0,001 | 0,0811 | < 0,001 |
+| `bathrooms` | 0,0914 | < 0,001 | 0,0893 | < 0,001 |
+| `floor` | 0,0027 | 0,008 | 0,0121 | < 0,001 |
+| `rooms` | −0,0120 | **0,006** | −0,0018 | **0,593** |
+| `heating` centralizzato | −0,0401 | **0,012** | −0,0108 | **0,387** |
+
+**R² adjusted: 0,8458 senza zona → 0,9059 con zona.** Le sole dummy di macrozona aggiungono **6 punti** di varianza spiegata a un modello che ne spiegava già l'85%.
+
+Due predittori **perdono la significatività** nel passaggio, ed è il risultato più istruttivo della fase:
+
+- **`rooms`** passa da p = 0,006 a p = 0,593. A parità di superficie, il numero di locali sembrava dire qualcosa sul prezzo; una volta noto il quartiere non dice più niente. Stava funzionando da indicatore di localizzazione — appartamenti tagliati in molte stanze piccole sono tipici di certe zone — non da caratteristica con un valore proprio.
+- **`heating` centralizzato** passa da p = 0,012 a p = 0,387, per la stessa ragione: il riscaldamento centralizzato è una caratteristica dei condomini di certe epoche e certi quartieri.
+
+Altri due si **ridimensionano** senza perdere significatività: `luxury` quasi si dimezza (0,679 → 0,364) e `elevator` cala di un terzo (0,120 → 0,079). Metà del premio "lusso" era, letteralmente, il quartiere.
+
+E uno va nella direzione opposta: **`floor` quadruplica** (0,0027 → 0,0121) e passa da p = 0,008 a p < 0,001. Senza controllo di zona l'effetto del piano era mascherato — i palazzi alti stanno tanto nei quartieri più cari quanto nelle periferie di edilizia popolare, e i due gruppi si annullavano a vicenda. È il caso in cui il controllo non riduce un effetto ma lo **rivela**.
+
+**Errori standard robusti** (`robust_standard_errors`)
+
+Lo stesso modello rifittato con `cov_type='HC3'`. Gli errori standard salgono, come atteso dopo il Breusch-Pagan della fase 7: per `log_surface` da 0,0072 a **0,0091** (+26%), per l'intercetta da 0,0285 a 0,0385 (+35%). Le variabili con coefficienti forti non si spostano di una virgola nelle conclusioni, e i due `heating` — già non significativi — lo diventano ancora di più (p da 0,779 a 0,841). **Nessuna conclusione della fase dipende dalla scelta fra errori standard classici e robusti**, e questa è l'informazione che l'analisi doveva produrre: non che gli HC3 siano migliori in astratto, ma che qui non cambiano la risposta.
+
+**Residui** (`multiple_residual_diagnostics`) — `charts/multiple_regression_residuals.png`
+
+La nuvola dei residui contro i valori stimati ha ampiezza sostanzialmente costante da log-prezzo 12 a 15, senza traccia del ventaglio della fase 7. Il Q-Q plot sta sulla diagonale per tutta la parte centrale con uno scostamento nella coda sinistra: un gruppo di immobili che il modello sopravvaluta nettamente, cioè annunci molto più economici di quanto le loro caratteristiche e la loro zona facciano prevedere. Sono poche decine di casi su 14.639 e non minacciano le stime, ma sono l'unico residuo di struttura non spiegata rimasto.
+
+**Confronto fra modelli** (`model_comparison`)
+
+| modello | R² adjusted | AIC |
+|---|---|---|
+| log-log semplice | 0,6554 | 14.531,0 |
+| multiplo completo | **0,9059** | **−4.441,2** |
+
+Entrambi stimati sulle stesse 14.639 righe e sulla stessa variabile dipendente `log_price`: è la condizione perché il confronto abbia senso, ed è il motivo per cui il modello lineare della fase 7 **non compare in tabella** — la sua dipendente è `price`, e un AIC calcolato su una scala diversa non è confrontabile. Il salto è netto su entrambi i criteri: la varianza spiegata passa dal 66% al 91%, e i circa 19.000 punti di AIC in meno dicono che l'aggiunta dei regressori paga ampiamente il costo della complessità.
+
+**Una promessa che i dati non consentono di mantenere.** Le versioni precedenti di questo README prevedevano un'analisi di sensibilità su `elevator`, da condurre rifittando il modello sul "sottoinsieme delle 13.572 righe col campo effettivamente compilato". Quel test **non è eseguibile**: nella sorgente `elevator` vale `1.0` oppure `NaN`, mai `0`, quindi il sottoinsieme con il campo compilato contiene solo immobili *con* ascensore. Senza variazione il coefficiente non è identificabile e la variabile verrebbe scartata dalla stima. Il ragionamento sulla codifica resta valido — l'errore di classificazione può solo attenuare β verso lo zero, quindi 0,0789 è semmai una sottostima — ma è un'argomentazione, non una verifica empirica, e viene qui dichiarata come tale.
 
 ### Phase 9 — Statistical Conclusions
 
@@ -457,8 +534,8 @@ La pipeline per rigenerarlo:
 | 5. ANOVA | ✅ **completata** — η² = 0,556, Welch, Tukey, diagnostica |
 | 6. Correlation | ✅ **completata** — Pearson vs Spearman, heatmap, multicollinearità |
 | 7. Linear Regression | ✅ **completata** — semplice e log-log, elasticità 1,09 |
-| 8. Multiple Linear Regression | 🟡 **prossima fase** |
-| 9. Statistical Conclusions | ⬜ da fare |
+| 8. Multiple Linear Regression | ✅ **completata** — R² adj = 0,906, VIF, dummy di zona, HC3 |
+| 9. Statistical Conclusions | 🟡 **prossima fase** |
 | 10. Mappa del prezzo medio al m² per zona | ⬜ da fare — mappa di riferimento già disponibile |
 
 ---
@@ -467,18 +544,18 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-7
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-8
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure delle fasi 1-7 in PNG (13 file)
+├── charts/                             # figure delle fasi 1-8 in PNG (14 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) , `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6) e `linear_regression.png` + `linear_regression_residuals.png` + `log_linear_regression_residuals.png` (fase 7); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) , `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6) e `linear_regression.png` + `linear_regression_residuals.png` + `log_linear_regression_residuals.png` (fase 7) e `multiple_regression_residuals.png` (fase 8); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -538,13 +615,22 @@ breusch_pagan_test        → LM, p, F sul modello lineare
 log_linear_regression     → OLS log(price) ~ log(surface): elasticità
 log_residual_diagnostics  → stessa diagnostica sul modello log-log
 log_breusch_pagan_test    → LM, p, F sul modello log-log
+
+# fase 8 — orchestrate da multiple_regression_phase
+prepare_regression_data   → log_price, log_surface, dropna sulle variabili del modello
+vif_analysis              → VIF dei sette predittori numerici
+multiple_regression       → modello completo: R², R² adj, AIC, coefficienti
+zone_comparison           → stesso modello con e senza dummy di zona, affiancati
+robust_standard_errors    → HC3 contro errori standard classici
+multiple_residual_diagnostics → residui vs stimati + Q-Q plot
+model_comparison          → log-log semplice contro completo, sulle stesse righe
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso con `statsmodels.api`, `anova_oneway`, `pairwise_tukeyhsd` e `het_breuschpagan` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso con `statsmodels.api`, `anova_oneway`, `pairwise_tukeyhsd`, `het_breuschpagan` e `variance_inflation_factor` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
