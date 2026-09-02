@@ -1,12 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-
-#import statsmodels.api as sm
 from scipy import stats
 import statsmodels.api as sm
 from statsmodels.stats.oneway import anova_oneway
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import seaborn as sns
+
 
 #load data
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
@@ -927,7 +927,219 @@ def anova_phase(df_clean):
 
     plot_macrozone_boxplots(df_clean)
 
+def prepare_correlation_data(df_clean):
 
+    correlation_data = df_clean.copy()
+
+    condition_mapping = {
+        'Da ristrutturare': 1,
+        'Buono / Abitabile': 2,
+        'Ottimo / Ristrutturato': 3,
+        'Nuovo / In costruzione': 4
+    }
+
+    correlation_data['condition_numeric'] = (
+        correlation_data['condition']
+        .map(condition_mapping)
+    )
+
+    return correlation_data
+
+def correlation_analysis(df_clean):
+
+    correlation_data = prepare_correlation_data(df_clean)
+
+    variables = [
+        'surface_mq',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'floor'
+    ]
+
+    print('CORRELATION WITH PRICE')
+
+    for variable in variables:
+
+        data = correlation_data[
+            [variable, 'price']
+        ].dropna()
+
+        pearson = stats.pearsonr(
+            data[variable],
+            data['price']
+        )
+
+        spearman = stats.spearmanr(
+            data[variable],
+            data['price']
+        )
+
+        print('\n')
+
+        print(variable)
+
+        print('Pearson:', pearson.statistic)
+
+        print('Pearson p-value:', pearson.pvalue)
+
+        print('Spearman:', spearman.statistic)
+
+        print('Spearman p-value:', spearman.pvalue)
+
+def correlation_matrix(df_clean):
+
+    correlation_data = prepare_correlation_data(df_clean)
+
+    variables = [
+        'price',
+        'surface_mq',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'floor'
+    ]
+
+    correlation_matrix = correlation_data[
+        variables
+    ].corr(method='pearson')
+
+    print('\n')
+
+    print('CORRELATION MATRIX')
+
+    print(correlation_matrix)
+
+    plt.figure(figsize=(10, 8))
+
+    sns.heatmap(
+        correlation_matrix,
+        annot=True,
+        fmt='.2f',
+        cmap='coolwarm',
+        center=0
+    )
+
+    plt.title('Correlation Matrix')
+
+    plt.tight_layout()
+
+    plt.savefig(
+        'charts/correlation_matrix.png',
+        dpi=150
+    )
+
+    plt.show()
+
+    return correlation_matrix
+
+def pearson_spearman_comparison(df_clean):
+
+    correlation_data = prepare_correlation_data(df_clean)
+
+    variables = [
+        'surface_mq',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'floor'
+    ]
+
+    pearson_values = []
+    spearman_values = []
+
+    for variable in variables:
+
+        data = correlation_data[
+            [variable, 'price']
+        ].dropna()
+
+        pearson = stats.pearsonr(
+            data[variable],
+            data['price']
+        ).statistic
+
+        spearman = stats.spearmanr(
+            data[variable],
+            data['price']
+        ).statistic
+
+        pearson_values.append(pearson)
+
+        spearman_values.append(spearman)
+
+    comparison = pd.DataFrame({
+        'variable': variables,
+        'Pearson': pearson_values,
+        'Spearman': spearman_values
+    })
+
+    print('\n')
+
+    print('PEARSON VS SPEARMAN')
+
+    print(comparison)
+
+    x = np.arange(len(variables))
+
+    width = 0.35
+
+    plt.figure(figsize=(10, 6))
+
+    plt.bar(
+        x - width / 2,
+        pearson_values,
+        width,
+        label='Pearson'
+    )
+
+    plt.bar(
+        x + width / 2,
+        spearman_values,
+        width,
+        label='Spearman'
+    )
+
+    plt.axhline(0, linestyle='--')
+
+    plt.xticks(
+        x,
+        variables,
+        rotation=45
+    )
+
+    plt.ylabel('Correlation with Price')
+
+    plt.title('Pearson vs Spearman Correlation')
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(
+        'charts/pearson_spearman_comparison.png',
+        dpi=150
+    )
+
+    plt.show()
+
+    return comparison
+
+def correlation_phase(df_clean):
+
+    print('PHASE 6 - CORRELATION')
+
+    print('\n')
+
+    correlation_analysis(df_clean)
+
+    print('\n')
+
+    correlation_matrix(df_clean)
+
+    print('\n')
+
+    pearson_spearman_comparison(df_clean)
 
    
 
@@ -1027,6 +1239,12 @@ print('\n')
 # PHASE 5 - ANOVA
 print('\n')
 anova_phase(df_clean)
+print('\n')
+
+# PHASE 6 - CORRELATION
+
+print('\n')
+correlation_phase(df_clean)
 print('\n')
 
 
