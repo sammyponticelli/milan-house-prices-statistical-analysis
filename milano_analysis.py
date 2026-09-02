@@ -690,37 +690,29 @@ def sampling_phase(df_clean):
 def two_sample_test(group_1, group_2):
 
     levene = stats.levene(group_1, group_2)
-
     t_test = stats.ttest_ind(group_1, group_2, equal_var=False)
 
     mean_1 = group_1.mean()
     mean_2 = group_2.mean()
-
     std_1 = group_1.std()
     std_2 = group_2.std()
-
     n_1 = len(group_1)
     n_2 = len(group_2)
 
     mean_diff = mean_1 - mean_2
-
     se_mean_diff = np.sqrt((std_1**2 / n_1) + (std_2**2 / n_2))
-
     degrees_freedom = (std_1**2 / n_1 + std_2**2 / n_2) ** 2 / (
         (std_1**2 / n_1) ** 2 / (n_1 - 1) + (std_2**2 / n_2) ** 2 / (n_2 - 1)
     )
 
     t_critical = stats.t.ppf(0.975, degrees_freedom)
-
     margin_error = t_critical * se_mean_diff
-
     lower = mean_diff - margin_error
     upper = mean_diff + margin_error
 
     pooled_std = np.sqrt(
         ((n_1 - 1) * std_1**2 + (n_2 - 1) * std_2**2) / (n_1 + n_2 - 2)
     )
-
     cohens_d = mean_diff / pooled_std
 
     return levene, t_test, degrees_freedom, (lower, upper), cohens_d
@@ -819,24 +811,17 @@ def anova_analysis(df_clean):
     anova_result = stats.f_oneway(*groups)
 
     grand_mean = anova_data['price_per_mq'].mean()
-
     between_variation = sum(
         len(group) * (group['price_per_mq'].mean() - grand_mean) ** 2
         for name, group in anova_data.groupby('macrozone')
     )
-
     total_variation = sum((anova_data['price_per_mq'] - grand_mean) ** 2)
-
     eta_squared = between_variation / total_variation
 
     print('ANOVA - 32 MACROZONES')
-
     print('F-statistic:', anova_result.statistic)
-
     print('Degrees of freedom:', len(groups) - 1, ',', len(anova_data) - len(groups))
-
     print('p-value:', anova_result.pvalue)
-
     print('Eta squared:', eta_squared)
 
     return anova_result, eta_squared
@@ -851,23 +836,17 @@ def welch_anova(df_clean):
     ]
 
     levene_result = stats.levene(*groups)
-
     welch_result = anova_oneway(
         anova_data['price_per_mq'], groups=anova_data['macrozone'], use_var='unequal'
     )
 
     print('ASSUMPTION CHECK')
-
     print('Levene:', levene_result)
-
     print('\n')
 
     print('WELCH ANOVA')
-
     print('F-statistic:', welch_result.statistic)
-
     print('Degrees of freedom:', welch_result.df)
-
     print('p-value:', welch_result.pvalue)
 
     return levene_result, welch_result
@@ -885,23 +864,16 @@ def residual_diagnostics(df_clean):
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     axes[0].scatter(fitted_values, residuals)
-
     axes[0].axhline(0, linestyle='--')
-
     axes[0].set_title('Residuals vs Fitted')
-
     axes[0].set_xlabel('Fitted Values')
-
     axes[0].set_ylabel('Residuals')
 
     stats.probplot(residuals, dist='norm', plot=axes[1])
-
     axes[1].set_title('Q-Q Plot of Residuals')
 
     plt.tight_layout()
-
     plt.savefig('charts/anova_residuals.png', dpi=150)
-
     plt.show()
 
     return model
@@ -923,19 +895,13 @@ def tukey_posthoc(df_clean):
     significant_pairs = tukey_table[tukey_table['reject'] == True]
 
     print('TUKEY HSD')
-
     print('Total comparisons:', len(tukey_table))
-
     print('Significant comparisons:', len(significant_pairs))
-
     print('\n')
-
     print('Most significant pairs')
 
     significant_pairs = significant_pairs.copy()
-
     significant_pairs['abs_meandiff'] = significant_pairs['meandiff'].abs()
-
     significant_pairs = significant_pairs.sort_values('abs_meandiff', ascending=False)
 
     print(
@@ -959,50 +925,32 @@ def plot_macrozone_boxplots(df_clean):
     ]
 
     plt.figure(figsize=(16, 8))
-
     plt.boxplot(data, tick_labels=macrozone_order)
-
     plt.title('Price per m² by Macrozone')
-
     plt.xlabel('Macrozone')
-
     plt.ylabel('Price per m² (€ / m²)')
-
     plt.xticks(rotation=90)
 
     plt.tight_layout()
-
     plt.savefig('charts/macrozone_boxplots.png', dpi=150)
-
     plt.show()
 
 
 def anova_phase(df_clean):
 
     print('\n')
-
     print('PHASE 5 - ANOVA')
-
     print('\n')
 
     anova_analysis(df_clean)
-
     print('\n')
-
     welch_anova(df_clean)
-
     print('\n')
-
     residual_diagnostics(df_clean)
-
     print('\n')
-
     tukey_posthoc(df_clean)
-
     print('\n')
-
     plot_macrozone_boxplots(df_clean)
-
     print('\n')
 
 
@@ -1035,21 +983,14 @@ def correlation_analysis(df_clean):
     for variable in variables:
 
         data = correlation_data[[variable, 'price']].dropna()
-
         pearson = stats.pearsonr(data[variable], data['price'])
-
         spearman = stats.spearmanr(data[variable], data['price'])
 
         print('\n')
-
         print(variable)
-
         print('Pearson:', pearson.statistic)
-
         print('Pearson p-value:', pearson.pvalue)
-
         print('Spearman:', spearman.statistic)
-
         print('Spearman p-value:', spearman.pvalue)
 
 
@@ -1069,21 +1010,15 @@ def correlation_matrix(df_clean):
     correlation_matrix = correlation_data[variables].corr(method='pearson')
 
     print('\n')
-
     print('CORRELATION MATRIX')
-
     print(correlation_matrix)
 
     plt.figure(figsize=(10, 8))
-
     sns.heatmap(correlation_matrix, annot=True, fmt='.2f', cmap='coolwarm', center=0)
-
     plt.title('Correlation Matrix')
 
     plt.tight_layout()
-
     plt.savefig('charts/correlation_matrix.png', dpi=150)
-
     plt.show()
 
     return correlation_matrix
@@ -1101,13 +1036,10 @@ def pearson_spearman_comparison(df_clean):
     for variable in variables:
 
         data = correlation_data[[variable, 'price']].dropna()
-
         pearson = stats.pearsonr(data[variable], data['price']).statistic
-
         spearman = stats.spearmanr(data[variable], data['price']).statistic
 
         pearson_values.append(pearson)
-
         spearman_values.append(spearman)
 
     comparison = pd.DataFrame(
@@ -1115,35 +1047,23 @@ def pearson_spearman_comparison(df_clean):
     )
 
     print('\n')
-
     print('PEARSON VS SPEARMAN')
-
     print(comparison)
 
     x = np.arange(len(variables))
-
     width = 0.35
 
     plt.figure(figsize=(10, 6))
-
     plt.bar(x - width / 2, pearson_values, width, label='Pearson')
-
     plt.bar(x + width / 2, spearman_values, width, label='Spearman')
-
     plt.axhline(0, linestyle='--')
-
     plt.xticks(x, variables, rotation=45)
-
     plt.ylabel('Correlation with Price')
-
     plt.title('Pearson vs Spearman Correlation')
-
     plt.legend()
 
     plt.tight_layout()
-
     plt.savefig('charts/pearson_spearman_comparison.png', dpi=150)
-
     plt.show()
 
     return comparison
@@ -1152,21 +1072,14 @@ def pearson_spearman_comparison(df_clean):
 def correlation_phase(df_clean):
 
     print('\n')
-
     print('PHASE 6 - CORRELATION')
-
     print('\n')
 
     correlation_analysis(df_clean)
-
     print('\n')
-
     correlation_matrix(df_clean)
-
     print('\n')
-
     pearson_spearman_comparison(df_clean)
-
     print('\n')
 
 
@@ -1175,31 +1088,20 @@ def linear_regression(df_clean):
     regression_data = df_clean[['price', 'surface_mq']].dropna()
 
     X = regression_data['surface_mq']
-
     X = sm.add_constant(X)
-
     y = regression_data['price']
 
     model = sm.OLS(y, X).fit()
 
     print('LINEAR REGRESSION')
-
     print('\n')
-
     print('Intercept:', model.params['const'])
-
     print('Surface coefficient:', model.params['surface_mq'])
-
     print('R-squared:', model.rsquared)
-
     print('Adjusted R-squared:', model.rsquared_adj)
-
     print('t-statistic:', model.tvalues['surface_mq'])
-
     print('p-value:', model.pvalues['surface_mq'])
-
     print('95% confidence interval:')
-
     print(model.conf_int().loc['surface_mq'])
 
     return model
@@ -1210,56 +1112,39 @@ def plot_linear_regression(df_clean, model):
     regression_data = df_clean[['price', 'surface_mq']].dropna()
 
     x = regression_data['surface_mq']
-
     y = regression_data['price']
-
     predicted = model.predict(sm.add_constant(x))
 
     plt.figure(figsize=(10, 6))
-
     plt.scatter(x, y, alpha=0.3)
-
     plt.plot(x, predicted, color='red')
-
     plt.title('Linear Regression: Price vs Surface')
-
     plt.xlabel('Surface (m²)')
-
     plt.ylabel('Price (€)')
 
     plt.tight_layout()
-
     plt.savefig('charts/linear_regression.png', dpi=150)
-
     plt.show()
 
 
 def linear_residual_diagnostics(model):
 
     fitted_values = model.fittedvalues
-
     residuals = model.resid
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     axes[0].scatter(fitted_values, residuals, alpha=0.3)
-
     axes[0].axhline(0, linestyle='--')
-
     axes[0].set_title('Residuals vs Fitted')
-
     axes[0].set_xlabel('Fitted Values')
-
     axes[0].set_ylabel('Residuals')
 
     stats.probplot(residuals, dist='norm', plot=axes[1])
-
     axes[1].set_title('Q-Q Plot of Residuals')
 
     plt.tight_layout()
-
     plt.savefig('charts/linear_regression_residuals.png', dpi=150)
-
     plt.show()
 
     return residuals
@@ -1268,25 +1153,17 @@ def linear_residual_diagnostics(model):
 def breusch_pagan_test(model):
 
     residuals = model.resid
-
     exog = model.model.exog
 
     bp_test = het_breuschpagan(residuals, exog)
-
     labels = ['LM statistic', 'LM p-value', 'F statistic', 'F p-value']
-
     results = dict(zip(labels, bp_test))
 
     print('\n')
-
     print('BREUSCH-PAGAN TEST')
-
     print('LM statistic:', results['LM statistic'])
-
     print('LM p-value:', results['LM p-value'])
-
     print('F statistic:', results['F statistic'])
-
     print('F p-value:', results['F p-value'])
 
     return results
@@ -1301,37 +1178,24 @@ def log_linear_regression(df_clean):
     ].copy()
 
     regression_data['log_price'] = np.log(regression_data['price'])
-
     regression_data['log_surface'] = np.log(regression_data['surface_mq'])
 
     X = regression_data['log_surface']
-
     X = sm.add_constant(X)
-
     y = regression_data['log_price']
 
     model = sm.OLS(y, X).fit()
 
     print('\n')
-
     print('LOG-LOG LINEAR REGRESSION')
-
     print('\n')
-
     print('Intercept:', model.params['const'])
-
     print('Log surface coefficient:', model.params['log_surface'])
-
     print('R-squared:', model.rsquared)
-
     print('Adjusted R-squared:', model.rsquared_adj)
-
     print('t-statistic:', model.tvalues['log_surface'])
-
     print('p-value:', model.pvalues['log_surface'])
-
     print('95% confidence interval:')
-
     print(model.conf_int().loc['log_surface'])
 
     return model
@@ -1340,54 +1204,38 @@ def log_linear_regression(df_clean):
 def log_residual_diagnostics(model):
 
     fitted_values = model.fittedvalues
-
     residuals = model.resid
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     axes[0].scatter(fitted_values, residuals, alpha=0.3)
-
     axes[0].axhline(0, linestyle='--')
-
     axes[0].set_title('Log-Log Residuals vs Fitted')
-
     axes[0].set_xlabel('Fitted Log Price')
-
     axes[0].set_ylabel('Residuals')
 
     stats.probplot(residuals, dist='norm', plot=axes[1])
-
     axes[1].set_title('Q-Q Plot of Log-Log Residuals')
 
     plt.tight_layout()
-
     plt.savefig('charts/log_linear_regression_residuals.png', dpi=150)
-
     plt.show()
 
 
 def log_breusch_pagan_test(model):
 
     residuals = model.resid
-
     exog = model.model.exog
 
     bp_test = het_breuschpagan(residuals, exog)
-
     labels = ['LM statistic', 'LM p-value', 'F statistic', 'F p-value']
-
     results = dict(zip(labels, bp_test))
 
     print('\n')
-
     print('BREUSCH-PAGAN TEST - LOG-LOG')
-
     print('LM statistic:', results['LM statistic'])
-
     print('LM p-value:', results['LM p-value'])
-
     print('F statistic:', results['F statistic'])
-
     print('F p-value:', results['F p-value'])
 
     return results
@@ -1396,37 +1244,23 @@ def log_breusch_pagan_test(model):
 def linear_regression_phase(df_clean):
 
     print('\n')
-
     print('PHASE 7 - LINEAR REGRESSION')
-
     print('\n')
 
     linear_model = linear_regression(df_clean)
-
     print('\n')
-
     plot_linear_regression(df_clean, linear_model)
-
     print('\n')
-
     linear_residual_diagnostics(linear_model)
-
     print('\n')
-
     breusch_pagan_test(linear_model)
-
     print('\n')
 
     log_model = log_linear_regression(df_clean)
-
     print('\n')
-
     log_residual_diagnostics(log_model)
-
     print('\n')
-
     log_breusch_pagan_test(log_model)
-
     print('\n')
 
     return linear_model, log_model
