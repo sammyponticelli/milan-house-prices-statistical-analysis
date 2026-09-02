@@ -326,21 +326,59 @@ Tre variabili correlate fra loro fra 0,71 e 0,75: stanno misurando in gran parte
 
 ### Phase 7 — Linear Regression
 
-```
-Price = β₀ + β₁ · Surface + ε
-```
+**Fase completata.** Due specificazioni stimate su tutti i **16.346 annunci** (`price` e `surface_mq` sono complete, e il filtro di positività richiesto dal logaritmo non scarta nulla: i minimi sono € 20.240 e 15 m²). Sette funzioni sotto `linear_regression_phase`, tre per il modello semplice e tre per il log-log, ciascuna terna composta da stima, diagnostica dei residui e test di Breusch-Pagan.
 
-- Coefficienti stimati, con **β₁ letto nelle sue unità**: euro di prezzo per metro quadro aggiuntivo.
-- **R²** — quanta varianza del prezzo è spiegata dalla sola superficie.
-- **p-value e statistica t** su β₁, più il suo intervallo di confidenza.
-- **Analisi dei residui**: residui contro valori stimati, Q-Q plot dei residui e **test di Breusch-Pagan** per l'eteroschedasticità. I residui si apriranno a ventaglio — la dispersione del prezzo attorno alla retta cresce con la superficie — il che viola l'assunzione di varianza costante dell'OLS.
-- Il rimedio, e seconda specificazione della fase:
+**Specificazione 1 — lineare** (`linear_regression`)
 
 ```
-log(Price) = β₀ + β₁ · log(Surface) + ε
+Price = −215.563 + 8.274 · Surface
 ```
 
-Qui β₁ è un'**elasticità** — la variazione percentuale del prezzo per una variazione dell'1% della superficie — i residui si comportano bene, e il modello è direttamente confrontabile con quello della fase 8. Si riportano entrambe le specificazioni, con la motivazione della preferenza per la seconda.
+| | |
+|---|---|
+| β₁ | **8.273,86** €/m² |
+| IC 95% di β₁ | [8.174,99; 8.372,73] |
+| t | 164,03 |
+| p | < 10⁻³⁰⁰ (stampato 0.0) |
+| R² | **0,622** |
+
+Ogni metro quadro aggiuntivo si porta dietro **€ 8.274** di prezzo, e la superficie da sola spiega il **62,2%** della varianza. Il coefficiente va però letto per quello che è: il metro quadro **marginale** costa € 8.274, mentre il metro quadro **medio** del dataset ne costa 5.622 (fase 1). Non è una contraddizione, è la stessa cosa detta due volte — il prezzo al m² cresce con la dimensione, e la specificazione log-log qui sotto lo quantifica.
+
+L'intercetta, **−215.563**, non ha alcuna interpretazione: è il prezzo che il modello attribuirebbe a un immobile di 0 m². Il minimo osservato è 15 m², quindi lo zero sta lontano da qualunque dato e l'intercetta è solo il punto dove la retta incrocia un asse che non descrive nessun immobile esistente. È il classico coefficiente che si riporta e non si interpreta.
+
+**La diagnostica boccia il modello** (`linear_residual_diagnostics`, `breusch_pagan_test`)
+
+Breusch-Pagan: **LM = 2.743,0, p ≈ 0**. `charts/linear_regression_residuals.png` mostra il perché nella forma più didattica possibile: i residui si aprono **a ventaglio** perfetto: attorno a valori stimati di € 200.000 stanno entro poche decine di migliaia di euro, oltre i 4 milioni arrivano a ±6 milioni. La varianza dell'errore non è costante, e l'assunzione di omoschedasticità dell'OLS è violata in modo plateale. Il Q-Q plot dei residui aggiunge la seconda violazione: la classica S, con entrambe le code molto più pesanti della normale.
+
+Le conseguenze sono precise e vale la pena essere espliciti: β₁ = 8.274 **resta corretto** (l'eteroschedasticità non distorce la stima puntuale dell'OLS), ma il suo errore standard no — quindi l'intervallo [8.175; 8.373] e il t = 164 sono inaffidabili. È il motivo per cui la fase 8 userà errori standard robusti HC3.
+
+**Specificazione 2 — log-log** (`log_linear_regression`)
+
+```
+log(Price) = 8,136 + 1,0913 · log(Surface)
+```
+
+| | |
+|---|---|
+| β₁ (elasticità) | **1,0913** |
+| IC 95% di β₁ | **[1,0786; 1,1041]** |
+| t | 167,84 |
+| R² | 0,633 |
+| Breusch-Pagan | LM = **179,8**, p = 5,3 × 10⁻⁴¹ |
+
+Qui β₁ è un'**elasticità**: a un aumento dell'1% della superficie corrisponde un aumento dell'**1,09%** del prezzo. Il valore interessante non è 1,09 in sé ma il suo confronto con **1**: se il prezzo fosse proporzionale alla superficie — cioè se il prezzo al m² fosse indipendente dalla dimensione — l'elasticità sarebbe esattamente 1. L'intervallo di confidenza, [1,0786; 1,1041], **esclude l'1 con ampio margine**. A Milano gli immobili grandi costano più che proporzionalmente: raddoppiare la superficie fa più che raddoppiare il prezzo. È il risultato della fase, ed è lo stesso fatto che la specificazione lineare esprimeva goffamente con un'intercetta negativa.
+
+**Perché il log-log è preferito, e perché non per l'R²**
+
+I due R², 0,622 e 0,633, **non sono confrontabili**: misurano la varianza spiegata di due variabili dipendenti diverse, `price` e `log(price)`. Metterli in classifica sarebbe un errore, ed è per questo che la preferenza non si argomenta lì.
+
+Si argomenta sui residui. Breusch-Pagan **rifiuta ancora** (p = 5 × 10⁻⁴¹): il log-log non risolve l'eteroschedasticità, la riduce. Ma la statistica LM scende da **2.743 a 180**, un fattore 15, e con n = 16.346 il test rifiuterebbe comunque qualsiasi deviazione anche minima — lo si è già visto con i test di normalità della fase 2. È il confronto fra le due magnitudini a portare l'informazione, non l'esito del test.
+
+E il grafico chiude la questione senza bisogno di statistiche: in `charts/log_linear_regression_residuals.png` il ventaglio è sparito, la nuvola dei residui ha **ampiezza pressoché costante** su tutto l'intervallo dei valori stimati, e il Q-Q plot sta sulla diagonale quasi ovunque — resta solo un lieve scostamento nella coda inferiore. Confrontato con la S marcata del modello lineare, è un'altra categoria di aderenza alle assunzioni.
+
+La seconda specificazione è quindi quella preferita, ed è anche quella direttamente confrontabile con il modello completo della fase 8, che parte da qui e aggiunge regressori.
+
+**Grafico della retta.** `charts/linear_regression.png` — nuvola dei 16.346 punti con la retta OLS sovrapposta, su scala originale. Il ventaglio si vede già qui, prima ancora di guardare i residui.
 
 ### Phase 8 — Multiple Linear Regression
 
@@ -406,8 +444,8 @@ La pipeline per rigenerarlo:
 | 4. Hypothesis Testing | ✅ **completata** — 4 test di Welch con effect size e IC |
 | 5. ANOVA | ✅ **completata** — η² = 0,556, Welch, Tukey, diagnostica |
 | 6. Correlation | ✅ **completata** — Pearson vs Spearman, heatmap, multicollinearità |
-| 7. Linear Regression | 🟡 **prossima fase** |
-| 8. Multiple Linear Regression | ⬜ da fare |
+| 7. Linear Regression | ✅ **completata** — semplice e log-log, elasticità 1,09 |
+| 8. Multiple Linear Regression | 🟡 **prossima fase** |
 | 9. Statistical Conclusions | ⬜ da fare |
 | 10. Mappa del prezzo medio al m² per zona | ⬜ da fare — mappa di riferimento già disponibile |
 
@@ -417,18 +455,18 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-6
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-7
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure delle fasi 1-6 in PNG (10 file)
+├── charts/                             # figure delle fasi 1-7 in PNG (13 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) e `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) , `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6) e `linear_regression.png` + `linear_regression_residuals.png` + `log_linear_regression_residuals.png` (fase 7); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -479,13 +517,22 @@ prepare_correlation_data  → condition → scala ordinale 1-4 (condition_numeri
 correlation_analysis      → Pearson e Spearman con price, variabile per variabile
 correlation_matrix        → matrice 6 × 6 + heatmap seaborn
 pearson_spearman_comparison → barre affiancate delle due misure
+
+# fase 7 — orchestrate da linear_regression_phase
+linear_regression         → OLS price ~ surface_mq: β, R², t, p, IC 95%
+plot_linear_regression    → nuvola dei punti con la retta stimata
+linear_residual_diagnostics → residui vs stimati + Q-Q plot dei residui
+breusch_pagan_test        → LM, p, F sul modello lineare
+log_linear_regression     → OLS log(price) ~ log(surface): elasticità
+log_residual_diagnostics  → stessa diagnostica sul modello log-log
+log_breusch_pagan_test    → LM, p, F sul modello log-log
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso dalla fase 5 con `statsmodels.api`, `anova_oneway` e `pairwise_tukeyhsd` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso con `statsmodels.api`, `anova_oneway`, `pairwise_tukeyhsd` e `het_breuschpagan` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
