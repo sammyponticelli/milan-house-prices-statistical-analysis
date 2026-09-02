@@ -220,6 +220,44 @@ def validate_clean_data(df_clean):
     return df_clean
 
 
+def data_cleaning_phase(df_raw):
+
+    # data inspection
+    inspect_data(df_raw)
+    print('\n')
+    inspect_categorical(df_raw)
+
+    # quality filters
+    df_clean = remove_subunits(df_raw)
+    print('\n')
+    inspect_quality_variables(df_clean)
+    print('\n')
+    df_clean = apply_quality_filters(df_clean)
+    print('\n')
+
+    # missing values
+    inspect_missing_values(df_clean)
+    print('\n')
+
+    # elevator encoding
+    df_clean = encode_elevator(df_clean)
+    print(df_clean['elevator'].value_counts())
+    print('\n')
+
+    # data type / text parsing
+    inspect_text_variables(df_clean)
+    print('\n')
+    df_clean = parse_text_variables(df_clean)
+    print('\n')
+
+    # final data validation
+    print('\n')
+    df_clean = validate_clean_data(df_clean)
+    print('\n')
+
+    return df_clean
+
+
 def descriptive_statistics(df_clean):
 
     variables = ['price', 'surface_mq', 'price_per_mq']
@@ -287,6 +325,16 @@ def plot_boxplots(df_clean):
     plt.tight_layout()
     plt.savefig('charts/boxplots.png', dpi=150)
     plt.show()
+
+
+def descriptive_statistics_phase(df_clean):
+
+    print('\n')
+    print('PHASE 1 - DESCRIPTIVE STATISTICS')
+    print('\n')
+    descriptive_statistics(df_clean)
+    print('\n')
+    plot_boxplots(df_clean)
 
 
 def plot_hist(df_clean):
@@ -474,6 +522,24 @@ def plot_log_comparison(df_clean):
     plt.show()
 
 
+def distribution_phase(df_clean):
+
+    print('\n')
+    print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
+    print('\n')
+    plot_hist(df_clean)
+    plot_qq(df_clean)
+    percentile_statistics(df_clean)
+    print('\n')
+    distribution_shape(df_clean)
+    plot_normal_distribution(df_clean)
+    print('\n')
+    log_transform(df_clean)
+    plot_log_comparison(df_clean)
+    print('\n')
+    print('\n')
+
+
 def population_parameters(df, variable):
     mean = df[variable].mean()
     std = df[variable].std(ddof=0)
@@ -602,6 +668,19 @@ def confidence_intervals(df_clean):
     print('Coverage 500:', round(coverage_500_percent, 2), '%')
 
 
+def sampling_phase(df_clean):
+
+    print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
+    print('\n')
+    population_parameters(df_clean, 'price_per_mq')
+    print('\n')
+    draw_sample(df_clean)
+    print('\n')
+    confidence_intervals(df_clean)
+    print('\n')
+    print('\n')
+
+
 def two_sample_test(group_1, group_2):
 
     levene = stats.levene(group_1, group_2)
@@ -713,6 +792,14 @@ def hypothesis_testing(df_clean):
     print('Degrees of freedom:', condition_test[2])
     print('95% CI:', condition_test[3])
     print("Cohen's d:", condition_test[4])
+
+
+def hypothesis_testing_phase(df_clean):
+
+    print('PHASE 4 - HYPOTHESIS TESTING')
+    print('\n')
+    hypothesis_testing(df_clean)
+    print('\n')
 
 
 def anova_analysis(df_clean):
@@ -886,6 +973,8 @@ def plot_macrozone_boxplots(df_clean):
 
 def anova_phase(df_clean):
 
+    print('\n')
+
     print('PHASE 5 - ANOVA')
 
     print('\n')
@@ -907,6 +996,8 @@ def anova_phase(df_clean):
     print('\n')
 
     plot_macrozone_boxplots(df_clean)
+
+    print('\n')
 
 
 def prepare_correlation_data(df_clean):
@@ -1054,6 +1145,8 @@ def pearson_spearman_comparison(df_clean):
 
 def correlation_phase(df_clean):
 
+    print('\n')
+
     print('PHASE 6 - CORRELATION')
 
     print('\n')
@@ -1067,6 +1160,8 @@ def correlation_phase(df_clean):
     print('\n')
 
     pearson_spearman_comparison(df_clean)
+
+    print('\n')
 
 
 def linear_regression(df_clean):
@@ -1294,6 +1389,8 @@ def log_breusch_pagan_test(model):
 
 def linear_regression_phase(df_clean):
 
+    print('\n')
+
     print('PHASE 7 - LINEAR REGRESSION')
 
     print('\n')
@@ -1324,100 +1421,33 @@ def linear_regression_phase(df_clean):
 
     log_breusch_pagan_test(log_model)
 
+    print('\n')
+
     return linear_model, log_model
 
 
 # main program
 
-# data inspection
-inspect_data(df_raw)
-print('\n')
-inspect_categorical(df_raw)
-
 # data cleaning
-
-# quality filters
-df_clean = remove_subunits(df_raw)
-print('\n')
-inspect_quality_variables(df_clean)
-print('\n')
-df_clean = apply_quality_filters(df_clean)
-print('\n')
-
-# missing values
-inspect_missing_values(df_clean)
-print('\n')
-
-# elevator encoding
-df_clean = encode_elevator(df_clean)
-print(df_clean['elevator'].value_counts())
-print('\n')
-
-# Data type / Text parsing
-inspect_text_variables(df_clean)
-print('\n')
-df_clean = parse_text_variables(df_clean)
-print('\n')
-
-# final data validation
-print('\n')
-df_clean = validate_clean_data(df_clean)
-print('\n')
+df_clean = data_cleaning_phase(df_raw)
 
 # PHASE 1 - DESCRIPTIVE STATISTICS
-print('\n')
-print('PHASE 1 - DESCRIPTIVE STATISTICS')
-print('\n')
-descriptive_statistics(df_clean)
-print('\n')
-plot_boxplots(df_clean)
+descriptive_statistics_phase(df_clean)
 
 # PHASE 2 — PROBABILITY & DISTRIBUTIONS
-print('\n')
-print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
-print('\n')
-plot_hist(df_clean)
-plot_qq(df_clean)
-percentile_statistics(df_clean)
-print('\n')
-distribution_shape(df_clean)
-plot_normal_distribution(df_clean)
-print('\n')
-log_transform(df_clean)
-plot_log_comparison(df_clean)
-print('\n')
-print('\n')
+distribution_phase(df_clean)
 
 # PHASE 3 - SAMPLING & CONFIDENCE INTERVALS
-print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
-print('\n')
-population_parameters(df_clean, 'price_per_mq')
-print('\n')
-draw_sample(df_clean)
-print('\n')
-confidence_intervals(df_clean)
-print('\n')
-print('\n')
+sampling_phase(df_clean)
 
 # PHASE 4 - HYPOTHESIS TESTING
-print('PHASE 4 - HYPOTHESIS TESTING')
-print('\n')
-hypothesis_testing(df_clean)
-print('\n')
+hypothesis_testing_phase(df_clean)
 
 # PHASE 5 - ANOVA
-print('\n')
 anova_phase(df_clean)
-print('\n')
 
 # PHASE 6 - CORRELATION
-
-print('\n')
 correlation_phase(df_clean)
-print('\n')
 
 # PHASE 7 - LINEAR REGRESSION
-
-print('\n')
 linear_regression_phase(df_clean)
-print('\n')
