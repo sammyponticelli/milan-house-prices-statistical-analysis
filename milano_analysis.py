@@ -584,6 +584,134 @@ def confidence_intervals(df_clean):
     print('Coverage 30:', round(coverage_30_percent, 2), '%')
     print('Coverage 100:', round(coverage_100_percent, 2), '%')
     print('Coverage 500:', round(coverage_500_percent, 2), '%')
+
+def two_sample_test(group_1, group_2):
+
+    levene = stats.levene(group_1, group_2)
+
+    t_test = stats.ttest_ind(
+        group_1,
+        group_2,
+        equal_var=False
+    )
+
+    mean_1 = group_1.mean()
+    mean_2 = group_2.mean()
+
+    std_1 = group_1.std()
+    std_2 = group_2.std()
+
+    n_1 = len(group_1)
+    n_2 = len(group_2)
+
+    mean_diff = mean_1 - mean_2
+
+    se_mean_diff = np.sqrt(
+        (std_1**2 / n_1) +
+        (std_2**2 / n_2)
+    )
+
+    degrees_freedom = (
+        (std_1**2 / n_1 + std_2**2 / n_2)**2 /
+        (
+            (std_1**2 / n_1)**2 / (n_1 - 1) +
+            (std_2**2 / n_2)**2 / (n_2 - 1)
+        )
+    )
+
+    t_critical = stats.t.ppf(0.975, degrees_freedom)
+
+    margin_error = t_critical * se_mean_diff
+
+    lower = mean_diff - margin_error
+    upper = mean_diff + margin_error
+
+    pooled_std = np.sqrt(
+        (
+            (n_1 - 1) * std_1**2 +
+            (n_2 - 1) * std_2**2
+        ) /
+        (n_1 + n_2 - 2)
+    )
+
+    cohens_d = mean_diff / pooled_std
+
+    return levene, t_test, degrees_freedom, (lower, upper), cohens_d
+
+def hypothesis_testing(df_clean):
+    centro = df_clean[df_clean['macrozone'] == 'Centro']['price_per_mq']
+    periferia = df_clean[df_clean['macrozone'] == 'Bisceglie, Baggio, Olmi']['price_per_mq']
+    ripamonti_vigentino = df_clean[df_clean['macrozone'] == 'Ripamonti, Vigentino']['price_per_mq']
+    porta_vittoria_lodi = df_clean[df_clean['macrozone'] == 'Porta Vittoria, Lodi']['price_per_mq']
+    elevator_yes = df_clean[df_clean['elevator'] == 1]['price_per_mq']
+    elevator_no = df_clean[df_clean['elevator'] == 0]['price_per_mq']
+    da_ristrutturare = df_clean[df_clean['condition'] == 'Da ristrutturare']['price_per_mq']
+    ottimo_ristrutturato = df_clean[df_clean['condition'] == 'Ottimo / Ristrutturato']['price_per_mq']
+
+    # TEST 1 - TWO ZONES
+    print('TEST 1 — Two Zones')
+
+    # far macrozones
+    test_zones = two_sample_test(centro, periferia)
+
+    print('centro vs periferia')
+    print('Levene:', test_zones[0])
+    print('t-statistic:', test_zones[1].statistic)
+    print('p-value:', test_zones[1].pvalue)
+    print('Degrees of freedom:', test_zones[2])
+    print('95% CI:', test_zones[3])
+    print("Cohen's d:", test_zones[4])
+    print('\n')
+
+    #near macrozones
+    test_zones_2 = two_sample_test(ripamonti_vigentino, porta_vittoria_lodi)
+
+    print('Ripamonti, Vigentino vs Porta Vittoria, Lodi')
+    print('Levene:', test_zones_2[0])
+    print('t-statistic:', test_zones_2[1].statistic)
+    print('p-value:', test_zones_2[1].pvalue)
+    print('Degrees of freedom:', test_zones_2[2])
+    print('95% CI:', test_zones_2[3])
+    print("Cohen's d:", test_zones_2[4])
+    print('\n')
+
+    #TEST 2 - A PROPERTY CHARACTERISTIC
+    print('TEST 2 — A property characteristic')
+
+    #elevator
+    print('Elevator: yes vs no')
+    elevator_test = two_sample_test(elevator_yes, elevator_no)
+    
+    print('Levene:', elevator_test[0])
+    print('t-statistic:', elevator_test[1].statistic)
+    print('p-value:', elevator_test[1].pvalue)
+    print('Degrees of freedom:', elevator_test[2])
+    print('95% CI:', elevator_test[3])
+    print("Cohen's d:", elevator_test[4])
+    print('\n')
+    
+    #condition
+    print('Condition: Da ristrutturare vs Ottimo/Ristrutturato')
+    condition_test = two_sample_test(da_ristrutturare, ottimo_ristrutturato)
+
+    print('Levene:', condition_test[0])
+    print('t-statistic:', condition_test[1].statistic)
+    print('p-value:', condition_test[1].pvalue)
+    print('Degrees of freedom:', condition_test[2])
+    print('95% CI:', condition_test[3])
+    print("Cohen's d:", condition_test[4])
+
+
+
+   
+
+
+
+
+
+
+
+
     
 
             
@@ -661,6 +789,15 @@ print('\n')
 draw_sample(df_clean)
 print('\n')
 confidence_intervals(df_clean)
+print('\n')
+print('\n')
+
+#PHASE 4 - HYPOTHESIS TESTING
+print('PHASE 4 - HYPOTHESIS TESTING')
+print('\n')
+hypothesis_testing(df_clean)
+print('\n')
+
 
 
 
