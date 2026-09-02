@@ -8,14 +8,14 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import seaborn as sns
 from statsmodels.stats.diagnostic import het_breuschpagan
 
-
-#load data
+# load data
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
 
-#initial inspection
+
+# initial inspection
 def inspect_data(df_raw):
 
-    #general info
+    # general info
     print('DATA INSPECTION')
     df_raw.info()
     print('\n')
@@ -26,21 +26,22 @@ def inspect_data(df_raw):
     print(df_raw.describe(include='number'))
     print('\n')
 
-    #missing values
+    # missing values
     print('MISSING VALUES')
     print(df_raw.isna().sum())
     print('\n')
 
-    #duplicates
+    # duplicates
     print('duplicates:', df_raw.duplicated().sum())
     print('\n')
+
 
 def inspect_categorical(df_raw):
 
     print('CATEGORICAL INSPECTION')
     print('\n')
 
-    #categorical variables
+    # categorical variables
     print(df_raw['category'].value_counts())
     print('\n')
     print(df_raw['unit'].value_counts())
@@ -54,10 +55,11 @@ def inspect_categorical(df_raw):
     print(df_raw['elevator'].value_counts())
     print('\n')
 
+
 def remove_subunits(df_raw):
 
     print('SUBUNITS REMOVED')
-    condition = df_raw['unit']==0
+    condition = df_raw['unit'] == 0
     df_filtered = df_raw[condition]
 
     initial_rows = len(df_raw['unit'])
@@ -70,6 +72,7 @@ def remove_subunits(df_raw):
 
     return df_filtered
 
+
 def inspect_quality_variables(df_clean):
 
     print('QUALITY VARIABLES INSPECTION')
@@ -81,6 +84,7 @@ def inspect_quality_variables(df_clean):
     print('\n')
     print(df_clean['price_is_range'].value_counts())
 
+
 def apply_quality_filters(df_clean):
 
     print('QUALITY FILTERS APPLIED')
@@ -88,18 +92,18 @@ def apply_quality_filters(df_clean):
     initial_rows = len(df_clean)
     print('initial rows:', initial_rows)
 
-    #category filter
-    condition = df_clean['category']=='Residenziale'
+    # category filter
+    condition = df_clean['category'] == 'Residenziale'
     df_filtered = df_clean[condition]
     print('category rows:', len(df_filtered))
 
-    #is_outlier filter
-    condition = df_filtered['is_outlier']==0
+    # is_outlier filter
+    condition = df_filtered['is_outlier'] == 0
     df_filtered = df_filtered[condition]
     print('is_outlier rows:', len(df_filtered))
 
-    #price_is_range filter
-    condition = df_filtered['price_is_range']==0
+    # price_is_range filter
+    condition = df_filtered['price_is_range'] == 0
     df_filtered = df_filtered[condition]
     print('price_is_range rows:', len(df_filtered))
 
@@ -109,18 +113,21 @@ def apply_quality_filters(df_clean):
 
     return df_filtered
 
+
 def inspect_missing_values(df_clean):
 
     print('MISSING VALUES INSPECTION')
-     
+
     print('price missing values:', df_clean['price'].isna().sum())
     print('surface_mq missing values:', df_clean['surface_mq'].isna().sum())
     print('price_per_mq missing values:', df_clean['price_per_mq'].isna().sum())
+
 
 def encode_elevator(df_clean):
     df_clean['elevator'] = df_clean['elevator'].fillna(0)
 
     return df_clean
+
 
 def inspect_text_variables(df_clean):
     print('TEXT VARIABLES INSPECTION')
@@ -131,68 +138,67 @@ def inspect_text_variables(df_clean):
     print('\n')
     print(df_clean['floor'].value_counts().head(5))
 
+
 def parse_text_variables(df_clean):
 
     print('TEXT VARIABLES PARSING')
 
-    #rooms
+    # rooms
     room_ranges = df_clean['rooms'].str.contains(r'\d+\s*-\s*\d+', na=False)
     df_clean = df_clean[~room_ranges]
 
     df_clean['rooms'] = df_clean['rooms'].str.extract(r'(\d+)')
     df_clean['rooms'] = pd.to_numeric(df_clean['rooms'])
 
-    #bathrooms
+    # bathrooms
     df_clean['bathrooms'] = df_clean['bathrooms'].str.extract(r'(\d+)')
     df_clean['bathrooms'] = pd.to_numeric(df_clean['bathrooms'])
 
-    #floor
+    # floor
     df_clean['floor'] = df_clean['floor'].str.lower()
 
-    df_clean['floor'] = df_clean['floor'].replace({
-        'piano terra': '0',
-        'piano rialzato': '0.5'
-    })
-
-    df_clean['floor'] = df_clean['floor'].str.extract(
-        r'(\d+(?:\.\d+)?)'
+    df_clean['floor'] = df_clean['floor'].replace(
+        {'piano terra': '0', 'piano rialzato': '0.5'}
     )
+
+    df_clean['floor'] = df_clean['floor'].str.extract(r'(\d+(?:\.\d+)?)')
 
     df_clean['floor'] = pd.to_numeric(df_clean['floor'])
 
     return df_clean
+
 
 def validate_clean_data(df_clean):
 
     print('FINAL DATA VALIDATION')
     print('\n')
 
-    #dataset shape
+    # dataset shape
     print('SHAPE')
     print(df_clean.shape)
     print('\n')
 
-    #missing values
+    # missing values
     print('MISSING VALUES')
     print(df_clean.isna().sum())
     print('\n')
 
-    #duplicates
+    # duplicates
     print('DUPLICATES')
     print(df_clean.duplicated().sum())
     print('\n')
 
-    #data types
+    # data types
     print('DATA TYPES')
     print(df_clean.dtypes)
     print('\n')
 
-    #parsed variables
+    # parsed variables
     print('PARSED VARIABLES')
     print(df_clean[['rooms', 'bathrooms', 'floor']].head(5))
     print('\n')
 
-    #transformed variables
+    # transformed variables
     print('TRANSFORMED VARIABLES')
     print('\n')
 
@@ -213,9 +219,10 @@ def validate_clean_data(df_clean):
 
     return df_clean
 
+
 def descriptive_statistics(df_clean):
 
-    variables = ['price','surface_mq','price_per_mq']
+    variables = ['price', 'surface_mq', 'price_per_mq']
 
     descriptive_data = df_clean[variables]
 
@@ -233,10 +240,10 @@ def descriptive_statistics(df_clean):
     q3 = descriptive_data.quantile(0.75)
     iqr = q3 - q1
     range_ = maximum - minimum
-    cv = std/mean
+    cv = std / mean
     skewness = descriptive_data.skew()
 
-    #table
+    # table
     statistics = {
         'Mean': mean,
         'Median': median,
@@ -250,7 +257,7 @@ def descriptive_statistics(df_clean):
         'IQR': iqr,
         'Range': range_,
         'CV': cv,
-        'Skewness': skewness
+        'Skewness': skewness,
     }
     statistics_df = pd.DataFrame(statistics).round(2)
 
@@ -258,12 +265,13 @@ def descriptive_statistics(df_clean):
 
     return statistics_df
 
+
 def plot_boxplots(df_clean):
 
-    variables = ['price','surface_mq','price_per_mq']
+    variables = ['price', 'surface_mq', 'price_per_mq']
     box_plot_data = df_clean[variables]
 
-    fig, axes = plt.subplots(1,3, figsize=(15,5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     axes[0].boxplot(box_plot_data['price'])
     axes[0].set_title('Price')
     axes[0].set_ylabel('Price (€)')
@@ -280,21 +288,21 @@ def plot_boxplots(df_clean):
     plt.savefig('charts/boxplots.png', dpi=150)
     plt.show()
 
+
 def plot_hist(df_clean):
 
-    variables = ['price', 'surface_mq','price_per_mq']
+    variables = ['price', 'surface_mq', 'price_per_mq']
     hist_data = df_clean[variables]
     mean = hist_data.mean()
     median = hist_data.median()
 
-    fig, axes = plt.subplots(1,3, figsize=(15,5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     axes[0].hist(hist_data['price'], bins=30)
     axes[0].set_title('Price')
     axes[0].set_ylabel('Frequency')
     axes[0].axvline(mean['price'], linestyle='--', color='red', label='Mean')
     axes[0].axvline(median['price'], linestyle='--', color='green', label='Median')
     axes[0].legend()
-
 
     axes[1].hist(hist_data['surface_mq'], bins=30)
     axes[1].set_title('Surface (m²)')
@@ -307,18 +315,21 @@ def plot_hist(df_clean):
     axes[2].set_title('Price per m² (€/m²)')
     axes[2].set_ylabel('Frequency')
     axes[2].axvline(mean['price_per_mq'], linestyle='--', color='red', label='Mean')
-    axes[2].axvline(median['price_per_mq'], linestyle='--', color='green', label='Median')
+    axes[2].axvline(
+        median['price_per_mq'], linestyle='--', color='green', label='Median'
+    )
     axes[2].legend()
 
     plt.tight_layout()
     plt.savefig('charts/histograms.png', dpi=150)
     plt.show()
 
+
 def plot_qq(df_clean):
     variables = ['price', 'surface_mq', 'price_per_mq']
     qq_data = df_clean[variables]
 
-    fig, axes = plt.subplots(1, 3, figsize=(15,5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     stats.probplot(qq_data['price'], dist='norm', plot=axes[0])
     axes[0].set_title('Price')
 
@@ -332,11 +343,12 @@ def plot_qq(df_clean):
     plt.savefig('charts/qq_plots.png', dpi=150)
     plt.show()
 
+
 def percentile_statistics(df_clean):
     variables = ['price', 'surface_mq', 'price_per_mq']
     percentile_data = df_clean[variables]
 
-    #percentile calculation
+    # percentile calculation
     p1 = percentile_data.quantile(0.01)
     p5 = percentile_data.quantile(0.05)
     p10 = percentile_data.quantile(0.10)
@@ -347,7 +359,7 @@ def percentile_statistics(df_clean):
     p95 = percentile_data.quantile(0.95)
     p99 = percentile_data.quantile(0.99)
 
-    #table
+    # table
     percentiles = {
         'P1': p1,
         'P5': p5,
@@ -365,21 +377,20 @@ def percentile_statistics(df_clean):
 
     return percentile_df
 
+
 def distribution_shape(df_clean):
-     variables = ['price', 'surface_mq', 'price_per_mq']
-     shape_data = df_clean[variables]
-     kurtosis = shape_data.kurt()
-     skewness = shape_data.skew()
+    variables = ['price', 'surface_mq', 'price_per_mq']
+    shape_data = df_clean[variables]
+    kurtosis = shape_data.kurt()
+    skewness = shape_data.skew()
 
-     shape_statistics = {
-         'Skewness': skewness,
-         'Kurtosis': kurtosis
-     }
+    shape_statistics = {'Skewness': skewness, 'Kurtosis': kurtosis}
 
-     shape_df = pd.DataFrame(shape_statistics).round(2)
-     print(shape_df)
+    shape_df = pd.DataFrame(shape_statistics).round(2)
+    print(shape_df)
 
-     return shape_df
+    return shape_df
+
 
 def plot_normal_distribution(df_clean):
     variables = ['price', 'surface_mq', 'price_per_mq']
@@ -391,30 +402,28 @@ def plot_normal_distribution(df_clean):
     mean_price_mq = normal_data['price_per_mq'].mean()
     std_price_mq = normal_data['price_per_mq'].std()
 
-    fig, axes = plt.subplots(1,3, figsize=(15,5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-    #price normal curve
-    x_price = np.linspace(normal_data['price'].min(),
-                          normal_data['price'].max(), 
-                          100)
+    # price normal curve
+    x_price = np.linspace(normal_data['price'].min(), normal_data['price'].max(), 100)
     normal_curve = stats.norm.pdf(x_price, mean_price, std_price)
     axes[0].hist(normal_data['price'], bins=30, density=True)
     axes[0].plot(x_price, normal_curve)
     axes[0].set_title('Price')
 
-    #surface normal curve
-    x_surface = np.linspace(normal_data['surface_mq'].min(),
-                              normal_data['surface_mq'].max(), 
-                              100)
+    # surface normal curve
+    x_surface = np.linspace(
+        normal_data['surface_mq'].min(), normal_data['surface_mq'].max(), 100
+    )
     normal_curve = stats.norm.pdf(x_surface, mean_surface, std_surface)
     axes[1].hist(normal_data['surface_mq'], bins=30, density=True)
     axes[1].plot(x_surface, normal_curve)
     axes[1].set_title('Surface (m²)')
 
-    #price per mq curve
-    x_price_mq = np.linspace(normal_data['price_per_mq'].min(),
-                              normal_data['price_per_mq'].max(), 
-                              100)
+    # price per mq curve
+    x_price_mq = np.linspace(
+        normal_data['price_per_mq'].min(), normal_data['price_per_mq'].max(), 100
+    )
     normal_curve = stats.norm.pdf(x_price_mq, mean_price_mq, std_price_mq)
     axes[2].hist(normal_data['price_per_mq'], bins=30, density=True)
     axes[2].plot(x_price_mq, normal_curve)
@@ -424,6 +433,7 @@ def plot_normal_distribution(df_clean):
     plt.savefig('charts/normal_distribution.png', dpi=150)
     plt.show()
 
+
 def log_transform(df_clean):
     log_data = df_clean.copy()
     log_data['log_price'] = np.log(log_data['price'])
@@ -431,6 +441,7 @@ def log_transform(df_clean):
     log_kurtosis = log_data['log_price'].kurt()
     print('Log Price Skewness:', round(log_skewness, 2))
     print('Log Price Kurtosis:', round(log_kurtosis, 2))
+
 
 def plot_log_comparison(df_clean):
     log_data = df_clean.copy()
@@ -440,22 +451,19 @@ def plot_log_comparison(df_clean):
     mean_log_price = log_data['log_price'].mean()
     std_log_price = log_data['log_price'].std()
 
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
-    fig, axes = plt.subplots(1,2, figsize=(10,5))
-
-    #plot hist and normal curve price
-    x_price = np.linspace(log_data['price'].min(), 
-                          log_data['price'].max(), 
-                              100)
+    # plot hist and normal curve price
+    x_price = np.linspace(log_data['price'].min(), log_data['price'].max(), 100)
     normal_curve = stats.norm.pdf(x_price, mean_price, std_price)
     axes[0].hist(log_data['price'], bins=30, density=True)
     axes[0].plot(x_price, normal_curve)
     axes[0].set_title('Price')
 
-    #plot hist log price
-    x_log_price = np.linspace(log_data['log_price'].min(),
-                              log_data['log_price'].max(), 
-                              100)
+    # plot hist log price
+    x_log_price = np.linspace(
+        log_data['log_price'].min(), log_data['log_price'].max(), 100
+    )
     normal_curve = stats.norm.pdf(x_log_price, mean_log_price, std_log_price)
     axes[1].hist(log_data['log_price'], bins=30, density=True)
     axes[1].plot(x_log_price, normal_curve)
@@ -465,6 +473,7 @@ def plot_log_comparison(df_clean):
     plt.savefig('charts/log_comparison.png', dpi=150)
     plt.show()
 
+
 def population_parameters(df, variable):
     mean = df[variable].mean()
     std = df[variable].std(ddof=0)
@@ -473,13 +482,14 @@ def population_parameters(df, variable):
 
     return mean, std
 
+
 def draw_sample(df_clean):
 
     population_std = df_clean['price_per_mq'].std(ddof=0)
 
-    sample_means_30=[]
-    sample_means_100=[]
-    sample_means_500=[]
+    sample_means_30 = []
+    sample_means_100 = []
+    sample_means_500 = []
 
     for i in range(1000):
         sample = df_clean.sample(30, replace=False)
@@ -496,7 +506,7 @@ def draw_sample(df_clean):
         sample_mean = sample['price_per_mq'].mean()
         sample_means_500.append(sample_mean)
 
-    fig, axes = plt.subplots(1,3, figsize=(15,5), sharex=True)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True)
 
     axes[0].hist(sample_means_30, bins=30, density=True)
     axes[0].set_title('n = 30')
@@ -522,13 +532,14 @@ def draw_sample(df_clean):
     se_data = {
         'n': [30, 100, 500],
         'Empirical SE': [empirical_se_30, empirical_se_100, empirical_se_500],
-        'Theorical SE': [theoretical_se_30, theoretical_se_100, theoretical_se_500]
+        'Theorical SE': [theoretical_se_30, theoretical_se_100, theoretical_se_500],
     }
 
     se_df = pd.DataFrame(se_data)
     print(se_df)
 
     return se_df
+
 
 def confidence_intervals(df_clean):
 
@@ -542,7 +553,7 @@ def confidence_intervals(df_clean):
     intervals_500 = []
 
     for sample_size in n:
-        t_critical = stats.t.ppf(1 - alpha/2, df = sample_size-1)
+        t_critical = stats.t.ppf(1 - alpha / 2, df=sample_size - 1)
 
         for i in range(1000):
             sample = df_clean.sample(sample_size, replace=False)
@@ -567,38 +578,35 @@ def confidence_intervals(df_clean):
     coverage_500 = 0
 
     for lower, upper in intervals_30:
-        
+
         if lower <= population_mean <= upper:
             coverage_30 += 1
-            
+
     coverage_30_percent = coverage_30 / 1000 * 100
 
     for lower, upper in intervals_100:
 
         if lower <= population_mean <= upper:
-            coverage_100 += 1 
+            coverage_100 += 1
 
     coverage_100_percent = coverage_100 / 1000 * 100
 
     for lower, upper in intervals_500:
-    
-            if lower <= population_mean <= upper:
-                coverage_500 += 1 
+
+        if lower <= population_mean <= upper:
+            coverage_500 += 1
     coverage_500_percent = coverage_500 / 1000 * 100
 
     print('Coverage 30:', round(coverage_30_percent, 2), '%')
     print('Coverage 100:', round(coverage_100_percent, 2), '%')
     print('Coverage 500:', round(coverage_500_percent, 2), '%')
 
+
 def two_sample_test(group_1, group_2):
 
     levene = stats.levene(group_1, group_2)
 
-    t_test = stats.ttest_ind(
-        group_1,
-        group_2,
-        equal_var=False
-    )
+    t_test = stats.ttest_ind(group_1, group_2, equal_var=False)
 
     mean_1 = group_1.mean()
     mean_2 = group_2.mean()
@@ -611,17 +619,10 @@ def two_sample_test(group_1, group_2):
 
     mean_diff = mean_1 - mean_2
 
-    se_mean_diff = np.sqrt(
-        (std_1**2 / n_1) +
-        (std_2**2 / n_2)
-    )
+    se_mean_diff = np.sqrt((std_1**2 / n_1) + (std_2**2 / n_2))
 
-    degrees_freedom = (
-        (std_1**2 / n_1 + std_2**2 / n_2)**2 /
-        (
-            (std_1**2 / n_1)**2 / (n_1 - 1) +
-            (std_2**2 / n_2)**2 / (n_2 - 1)
-        )
+    degrees_freedom = (std_1**2 / n_1 + std_2**2 / n_2) ** 2 / (
+        (std_1**2 / n_1) ** 2 / (n_1 - 1) + (std_2**2 / n_2) ** 2 / (n_2 - 1)
     )
 
     t_critical = stats.t.ppf(0.975, degrees_freedom)
@@ -632,26 +633,33 @@ def two_sample_test(group_1, group_2):
     upper = mean_diff + margin_error
 
     pooled_std = np.sqrt(
-        (
-            (n_1 - 1) * std_1**2 +
-            (n_2 - 1) * std_2**2
-        ) /
-        (n_1 + n_2 - 2)
+        ((n_1 - 1) * std_1**2 + (n_2 - 1) * std_2**2) / (n_1 + n_2 - 2)
     )
 
     cohens_d = mean_diff / pooled_std
 
     return levene, t_test, degrees_freedom, (lower, upper), cohens_d
 
+
 def hypothesis_testing(df_clean):
     centro = df_clean[df_clean['macrozone'] == 'Centro']['price_per_mq']
-    periferia = df_clean[df_clean['macrozone'] == 'Bisceglie, Baggio, Olmi']['price_per_mq']
-    ripamonti_vigentino = df_clean[df_clean['macrozone'] == 'Ripamonti, Vigentino']['price_per_mq']
-    porta_vittoria_lodi = df_clean[df_clean['macrozone'] == 'Porta Vittoria, Lodi']['price_per_mq']
+    periferia = df_clean[df_clean['macrozone'] == 'Bisceglie, Baggio, Olmi'][
+        'price_per_mq'
+    ]
+    ripamonti_vigentino = df_clean[df_clean['macrozone'] == 'Ripamonti, Vigentino'][
+        'price_per_mq'
+    ]
+    porta_vittoria_lodi = df_clean[df_clean['macrozone'] == 'Porta Vittoria, Lodi'][
+        'price_per_mq'
+    ]
     elevator_yes = df_clean[df_clean['elevator'] == 1]['price_per_mq']
     elevator_no = df_clean[df_clean['elevator'] == 0]['price_per_mq']
-    da_ristrutturare = df_clean[df_clean['condition'] == 'Da ristrutturare']['price_per_mq']
-    ottimo_ristrutturato = df_clean[df_clean['condition'] == 'Ottimo / Ristrutturato']['price_per_mq']
+    da_ristrutturare = df_clean[df_clean['condition'] == 'Da ristrutturare'][
+        'price_per_mq'
+    ]
+    ottimo_ristrutturato = df_clean[df_clean['condition'] == 'Ottimo / Ristrutturato'][
+        'price_per_mq'
+    ]
 
     # TEST 1 - TWO ZONES
     print('TEST 1 — Two Zones')
@@ -668,7 +676,7 @@ def hypothesis_testing(df_clean):
     print("Cohen's d:", test_zones[4])
     print('\n')
 
-    #near macrozones
+    # near macrozones
     test_zones_2 = two_sample_test(ripamonti_vigentino, porta_vittoria_lodi)
 
     print('Ripamonti, Vigentino vs Porta Vittoria, Lodi')
@@ -680,13 +688,13 @@ def hypothesis_testing(df_clean):
     print("Cohen's d:", test_zones_2[4])
     print('\n')
 
-    #TEST 2 - A PROPERTY CHARACTERISTIC
+    # TEST 2 - A PROPERTY CHARACTERISTIC
     print('TEST 2 — A property characteristic')
 
-    #elevator
+    # elevator
     print('Elevator: yes vs no')
     elevator_test = two_sample_test(elevator_yes, elevator_no)
-    
+
     print('Levene:', elevator_test[0])
     print('t-statistic:', elevator_test[1].statistic)
     print('p-value:', elevator_test[1].pvalue)
@@ -694,8 +702,8 @@ def hypothesis_testing(df_clean):
     print('95% CI:', elevator_test[3])
     print("Cohen's d:", elevator_test[4])
     print('\n')
-    
-    #condition
+
+    # condition
     print('Condition: Da ristrutturare vs Ottimo/Ristrutturato')
     condition_test = two_sample_test(da_ristrutturare, ottimo_ristrutturato)
 
@@ -706,13 +714,13 @@ def hypothesis_testing(df_clean):
     print('95% CI:', condition_test[3])
     print("Cohen's d:", condition_test[4])
 
+
 def anova_analysis(df_clean):
 
     anova_data = df_clean[['price_per_mq', 'macrozone']].dropna()
 
     groups = [
-        group['price_per_mq'].values
-        for name, group in anova_data.groupby('macrozone')
+        group['price_per_mq'].values for name, group in anova_data.groupby('macrozone')
     ]
 
     anova_result = stats.f_oneway(*groups)
@@ -720,13 +728,11 @@ def anova_analysis(df_clean):
     grand_mean = anova_data['price_per_mq'].mean()
 
     between_variation = sum(
-        len(group) * (group['price_per_mq'].mean() - grand_mean)**2
+        len(group) * (group['price_per_mq'].mean() - grand_mean) ** 2
         for name, group in anova_data.groupby('macrozone')
     )
 
-    total_variation = sum(
-        (anova_data['price_per_mq'] - grand_mean)**2
-    )
+    total_variation = sum((anova_data['price_per_mq'] - grand_mean) ** 2)
 
     eta_squared = between_variation / total_variation
 
@@ -734,8 +740,7 @@ def anova_analysis(df_clean):
 
     print('F-statistic:', anova_result.statistic)
 
-    print('Degrees of freedom:', len(groups) - 1,
-          ',', len(anova_data) - len(groups))
+    print('Degrees of freedom:', len(groups) - 1, ',', len(anova_data) - len(groups))
 
     print('p-value:', anova_result.pvalue)
 
@@ -743,21 +748,19 @@ def anova_analysis(df_clean):
 
     return anova_result, eta_squared
 
+
 def welch_anova(df_clean):
 
     anova_data = df_clean[['price_per_mq', 'macrozone']].dropna()
 
     groups = [
-        group['price_per_mq'].values
-        for name, group in anova_data.groupby('macrozone')
+        group['price_per_mq'].values for name, group in anova_data.groupby('macrozone')
     ]
 
     levene_result = stats.levene(*groups)
 
     welch_result = anova_oneway(
-        anova_data['price_per_mq'],
-        groups=anova_data['macrozone'],
-        use_var='unequal'
+        anova_data['price_per_mq'], groups=anova_data['macrozone'], use_var='unequal'
     )
 
     print('ASSUMPTION CHECK')
@@ -776,14 +779,12 @@ def welch_anova(df_clean):
 
     return levene_result, welch_result
 
+
 def residual_diagnostics(df_clean):
 
     residual_data = df_clean[['price_per_mq', 'macrozone']].dropna()
 
-    model = sm.formula.ols(
-        'price_per_mq ~ C(macrozone)',
-        data=residual_data
-    ).fit()
+    model = sm.formula.ols('price_per_mq ~ C(macrozone)', data=residual_data).fit()
 
     fitted_values = model.fittedvalues
     residuals = model.resid
@@ -800,11 +801,7 @@ def residual_diagnostics(df_clean):
 
     axes[0].set_ylabel('Residuals')
 
-    stats.probplot(
-        residuals,
-        dist='norm',
-        plot=axes[1]
-    )
+    stats.probplot(residuals, dist='norm', plot=axes[1])
 
     axes[1].set_title('Q-Q Plot of Residuals')
 
@@ -816,24 +813,21 @@ def residual_diagnostics(df_clean):
 
     return model
 
+
 def tukey_posthoc(df_clean):
 
     tukey_data = df_clean[['price_per_mq', 'macrozone']].dropna()
 
     tukey_result = pairwise_tukeyhsd(
-        endog=tukey_data['price_per_mq'],
-        groups=tukey_data['macrozone'],
-        alpha=0.05
+        endog=tukey_data['price_per_mq'], groups=tukey_data['macrozone'], alpha=0.05
     )
 
     tukey_table = pd.DataFrame(
         data=tukey_result._results_table.data[1:],
-        columns=tukey_result._results_table.data[0]
+        columns=tukey_result._results_table.data[0],
     )
 
-    significant_pairs = tukey_table[
-        tukey_table['reject'] == True
-    ]
+    significant_pairs = tukey_table[tukey_table['reject'] == True]
 
     print('TUKEY HSD')
 
@@ -847,48 +841,33 @@ def tukey_posthoc(df_clean):
 
     significant_pairs = significant_pairs.copy()
 
-    significant_pairs['abs_meandiff'] = (
-        significant_pairs['meandiff'].abs()
-    )
+    significant_pairs['abs_meandiff'] = significant_pairs['meandiff'].abs()
 
-    significant_pairs = significant_pairs.sort_values(
-        'abs_meandiff',
-        ascending=False
-    )
+    significant_pairs = significant_pairs.sort_values('abs_meandiff', ascending=False)
 
     print(
-        significant_pairs[
-            ['group1', 'group2', 'meandiff', 'p-adj', 'reject']
-        ].head(10)
+        significant_pairs[['group1', 'group2', 'meandiff', 'p-adj', 'reject']].head(10)
     )
 
     return tukey_result, significant_pairs
+
 
 def plot_macrozone_boxplots(df_clean):
 
     boxplot_data = df_clean[['price_per_mq', 'macrozone']].dropna()
 
     macrozone_order = (
-        boxplot_data
-        .groupby('macrozone')['price_per_mq']
-        .median()
-        .sort_values()
-        .index
+        boxplot_data.groupby('macrozone')['price_per_mq'].median().sort_values().index
     )
 
     data = [
-        boxplot_data[
-            boxplot_data['macrozone'] == macrozone
-        ]['price_per_mq']
+        boxplot_data[boxplot_data['macrozone'] == macrozone]['price_per_mq']
         for macrozone in macrozone_order
     ]
 
     plt.figure(figsize=(16, 8))
 
-    plt.boxplot(
-    data,
-    tick_labels=macrozone_order
-)
+    plt.boxplot(data, tick_labels=macrozone_order)
 
     plt.title('Price per m² by Macrozone')
 
@@ -903,6 +882,7 @@ def plot_macrozone_boxplots(df_clean):
     plt.savefig('charts/macrozone_boxplots.png', dpi=150)
 
     plt.show()
+
 
 def anova_phase(df_clean):
 
@@ -928,6 +908,7 @@ def anova_phase(df_clean):
 
     plot_macrozone_boxplots(df_clean)
 
+
 def prepare_correlation_data(df_clean):
 
     correlation_data = df_clean.copy()
@@ -936,45 +917,31 @@ def prepare_correlation_data(df_clean):
         'Da ristrutturare': 1,
         'Buono / Abitabile': 2,
         'Ottimo / Ristrutturato': 3,
-        'Nuovo / In costruzione': 4
+        'Nuovo / In costruzione': 4,
     }
 
-    correlation_data['condition_numeric'] = (
-        correlation_data['condition']
-        .map(condition_mapping)
+    correlation_data['condition_numeric'] = correlation_data['condition'].map(
+        condition_mapping
     )
 
     return correlation_data
+
 
 def correlation_analysis(df_clean):
 
     correlation_data = prepare_correlation_data(df_clean)
 
-    variables = [
-        'surface_mq',
-        'rooms',
-        'bathrooms',
-        'condition_numeric',
-        'floor'
-    ]
+    variables = ['surface_mq', 'rooms', 'bathrooms', 'condition_numeric', 'floor']
 
     print('CORRELATION WITH PRICE')
 
     for variable in variables:
 
-        data = correlation_data[
-            [variable, 'price']
-        ].dropna()
+        data = correlation_data[[variable, 'price']].dropna()
 
-        pearson = stats.pearsonr(
-            data[variable],
-            data['price']
-        )
+        pearson = stats.pearsonr(data[variable], data['price'])
 
-        spearman = stats.spearmanr(
-            data[variable],
-            data['price']
-        )
+        spearman = stats.spearmanr(data[variable], data['price'])
 
         print('\n')
 
@@ -988,6 +955,7 @@ def correlation_analysis(df_clean):
 
         print('Spearman p-value:', spearman.pvalue)
 
+
 def correlation_matrix(df_clean):
 
     correlation_data = prepare_correlation_data(df_clean)
@@ -998,12 +966,10 @@ def correlation_matrix(df_clean):
         'rooms',
         'bathrooms',
         'condition_numeric',
-        'floor'
+        'floor',
     ]
 
-    correlation_matrix = correlation_data[
-        variables
-    ].corr(method='pearson')
+    correlation_matrix = correlation_data[variables].corr(method='pearson')
 
     print('\n')
 
@@ -1013,67 +979,43 @@ def correlation_matrix(df_clean):
 
     plt.figure(figsize=(10, 8))
 
-    sns.heatmap(
-        correlation_matrix,
-        annot=True,
-        fmt='.2f',
-        cmap='coolwarm',
-        center=0
-    )
+    sns.heatmap(correlation_matrix, annot=True, fmt='.2f', cmap='coolwarm', center=0)
 
     plt.title('Correlation Matrix')
 
     plt.tight_layout()
 
-    plt.savefig(
-        'charts/correlation_matrix.png',
-        dpi=150
-    )
+    plt.savefig('charts/correlation_matrix.png', dpi=150)
 
     plt.show()
 
     return correlation_matrix
 
+
 def pearson_spearman_comparison(df_clean):
 
     correlation_data = prepare_correlation_data(df_clean)
 
-    variables = [
-        'surface_mq',
-        'rooms',
-        'bathrooms',
-        'condition_numeric',
-        'floor'
-    ]
+    variables = ['surface_mq', 'rooms', 'bathrooms', 'condition_numeric', 'floor']
 
     pearson_values = []
     spearman_values = []
 
     for variable in variables:
 
-        data = correlation_data[
-            [variable, 'price']
-        ].dropna()
+        data = correlation_data[[variable, 'price']].dropna()
 
-        pearson = stats.pearsonr(
-            data[variable],
-            data['price']
-        ).statistic
+        pearson = stats.pearsonr(data[variable], data['price']).statistic
 
-        spearman = stats.spearmanr(
-            data[variable],
-            data['price']
-        ).statistic
+        spearman = stats.spearmanr(data[variable], data['price']).statistic
 
         pearson_values.append(pearson)
 
         spearman_values.append(spearman)
 
-    comparison = pd.DataFrame({
-        'variable': variables,
-        'Pearson': pearson_values,
-        'Spearman': spearman_values
-    })
+    comparison = pd.DataFrame(
+        {'variable': variables, 'Pearson': pearson_values, 'Spearman': spearman_values}
+    )
 
     print('\n')
 
@@ -1087,27 +1029,13 @@ def pearson_spearman_comparison(df_clean):
 
     plt.figure(figsize=(10, 6))
 
-    plt.bar(
-        x - width / 2,
-        pearson_values,
-        width,
-        label='Pearson'
-    )
+    plt.bar(x - width / 2, pearson_values, width, label='Pearson')
 
-    plt.bar(
-        x + width / 2,
-        spearman_values,
-        width,
-        label='Spearman'
-    )
+    plt.bar(x + width / 2, spearman_values, width, label='Spearman')
 
     plt.axhline(0, linestyle='--')
 
-    plt.xticks(
-        x,
-        variables,
-        rotation=45
-    )
+    plt.xticks(x, variables, rotation=45)
 
     plt.ylabel('Correlation with Price')
 
@@ -1117,14 +1045,12 @@ def pearson_spearman_comparison(df_clean):
 
     plt.tight_layout()
 
-    plt.savefig(
-        'charts/pearson_spearman_comparison.png',
-        dpi=150
-    )
+    plt.savefig('charts/pearson_spearman_comparison.png', dpi=150)
 
     plt.show()
 
     return comparison
+
 
 def correlation_phase(df_clean):
 
@@ -1145,9 +1071,7 @@ def correlation_phase(df_clean):
 
 def linear_regression(df_clean):
 
-    regression_data = df_clean[
-        ['price', 'surface_mq']
-    ].dropna()
+    regression_data = df_clean[['price', 'surface_mq']].dropna()
 
     X = regression_data['surface_mq']
 
@@ -1155,10 +1079,7 @@ def linear_regression(df_clean):
 
     y = regression_data['price']
 
-    model = sm.OLS(
-        y,
-        X
-    ).fit()
+    model = sm.OLS(y, X).fit()
 
     print('LINEAR REGRESSION')
 
@@ -1178,39 +1099,26 @@ def linear_regression(df_clean):
 
     print('95% confidence interval:')
 
-    print(
-        model.conf_int().loc['surface_mq']
-    )
+    print(model.conf_int().loc['surface_mq'])
 
     return model
 
+
 def plot_linear_regression(df_clean, model):
 
-    regression_data = df_clean[
-        ['price', 'surface_mq']
-    ].dropna()
+    regression_data = df_clean[['price', 'surface_mq']].dropna()
 
     x = regression_data['surface_mq']
 
     y = regression_data['price']
 
-    predicted = model.predict(
-        sm.add_constant(x)
-    )
+    predicted = model.predict(sm.add_constant(x))
 
     plt.figure(figsize=(10, 6))
 
-    plt.scatter(
-        x,
-        y,
-        alpha=0.3
-    )
+    plt.scatter(x, y, alpha=0.3)
 
-    plt.plot(
-        x,
-        predicted,
-        color='red'
-    )
+    plt.plot(x, predicted, color='red')
 
     plt.title('Linear Regression: Price vs Surface')
 
@@ -1220,12 +1128,10 @@ def plot_linear_regression(df_clean, model):
 
     plt.tight_layout()
 
-    plt.savefig(
-        'charts/linear_regression.png',
-        dpi=150
-    )
+    plt.savefig('charts/linear_regression.png', dpi=150)
 
     plt.show()
+
 
 def linear_residual_diagnostics(model):
 
@@ -1233,55 +1139,30 @@ def linear_residual_diagnostics(model):
 
     residuals = model.resid
 
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(12, 5)
-    )
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    axes[0].scatter(
-        fitted_values,
-        residuals,
-        alpha=0.3
-    )
+    axes[0].scatter(fitted_values, residuals, alpha=0.3)
 
-    axes[0].axhline(
-        0,
-        linestyle='--'
-    )
+    axes[0].axhline(0, linestyle='--')
 
-    axes[0].set_title(
-        'Residuals vs Fitted'
-    )
+    axes[0].set_title('Residuals vs Fitted')
 
-    axes[0].set_xlabel(
-        'Fitted Values'
-    )
+    axes[0].set_xlabel('Fitted Values')
 
-    axes[0].set_ylabel(
-        'Residuals'
-    )
+    axes[0].set_ylabel('Residuals')
 
-    stats.probplot(
-        residuals,
-        dist='norm',
-        plot=axes[1]
-    )
+    stats.probplot(residuals, dist='norm', plot=axes[1])
 
-    axes[1].set_title(
-        'Q-Q Plot of Residuals'
-    )
+    axes[1].set_title('Q-Q Plot of Residuals')
 
     plt.tight_layout()
 
-    plt.savefig(
-        'charts/linear_regression_residuals.png',
-        dpi=150
-    )
+    plt.savefig('charts/linear_regression_residuals.png', dpi=150)
 
     plt.show()
 
     return residuals
+
 
 def breusch_pagan_test(model):
 
@@ -1289,24 +1170,11 @@ def breusch_pagan_test(model):
 
     exog = model.model.exog
 
-    bp_test = het_breuschpagan(
-        residuals,
-        exog
-    )
+    bp_test = het_breuschpagan(residuals, exog)
 
-    labels = [
-        'LM statistic',
-        'LM p-value',
-        'F statistic',
-        'F p-value'
-    ]
+    labels = ['LM statistic', 'LM p-value', 'F statistic', 'F p-value']
 
-    results = dict(
-        zip(
-            labels,
-            bp_test
-        )
-    )
+    results = dict(zip(labels, bp_test))
 
     print('\n')
 
@@ -1322,24 +1190,18 @@ def breusch_pagan_test(model):
 
     return results
 
+
 def log_linear_regression(df_clean):
 
-    regression_data = df_clean[
-        ['price', 'surface_mq']
-    ].dropna()
+    regression_data = df_clean[['price', 'surface_mq']].dropna()
 
     regression_data = regression_data[
-        (regression_data['price'] > 0) &
-        (regression_data['surface_mq'] > 0)
+        (regression_data['price'] > 0) & (regression_data['surface_mq'] > 0)
     ].copy()
 
-    regression_data['log_price'] = np.log(
-        regression_data['price']
-    )
+    regression_data['log_price'] = np.log(regression_data['price'])
 
-    regression_data['log_surface'] = np.log(
-        regression_data['surface_mq']
-    )
+    regression_data['log_surface'] = np.log(regression_data['surface_mq'])
 
     X = regression_data['log_surface']
 
@@ -1347,10 +1209,7 @@ def log_linear_regression(df_clean):
 
     y = regression_data['log_price']
 
-    model = sm.OLS(
-        y,
-        X
-    ).fit()
+    model = sm.OLS(y, X).fit()
 
     print('\n')
 
@@ -1360,35 +1219,22 @@ def log_linear_regression(df_clean):
 
     print('Intercept:', model.params['const'])
 
-    print(
-        'Log surface coefficient:',
-        model.params['log_surface']
-    )
+    print('Log surface coefficient:', model.params['log_surface'])
 
     print('R-squared:', model.rsquared)
 
-    print(
-        'Adjusted R-squared:',
-        model.rsquared_adj
-    )
+    print('Adjusted R-squared:', model.rsquared_adj)
 
-    print(
-        't-statistic:',
-        model.tvalues['log_surface']
-    )
+    print('t-statistic:', model.tvalues['log_surface'])
 
-    print(
-        'p-value:',
-        model.pvalues['log_surface']
-    )
+    print('p-value:', model.pvalues['log_surface'])
 
     print('95% confidence interval:')
 
-    print(
-        model.conf_int().loc['log_surface']
-    )
+    print(model.conf_int().loc['log_surface'])
 
     return model
+
 
 def log_residual_diagnostics(model):
 
@@ -1396,53 +1242,28 @@ def log_residual_diagnostics(model):
 
     residuals = model.resid
 
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(12, 5)
-    )
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    axes[0].scatter(
-        fitted_values,
-        residuals,
-        alpha=0.3
-    )
+    axes[0].scatter(fitted_values, residuals, alpha=0.3)
 
-    axes[0].axhline(
-        0,
-        linestyle='--'
-    )
+    axes[0].axhline(0, linestyle='--')
 
-    axes[0].set_title(
-        'Log-Log Residuals vs Fitted'
-    )
+    axes[0].set_title('Log-Log Residuals vs Fitted')
 
-    axes[0].set_xlabel(
-        'Fitted Log Price'
-    )
+    axes[0].set_xlabel('Fitted Log Price')
 
-    axes[0].set_ylabel(
-        'Residuals'
-    )
+    axes[0].set_ylabel('Residuals')
 
-    stats.probplot(
-        residuals,
-        dist='norm',
-        plot=axes[1]
-    )
+    stats.probplot(residuals, dist='norm', plot=axes[1])
 
-    axes[1].set_title(
-        'Q-Q Plot of Log-Log Residuals'
-    )
+    axes[1].set_title('Q-Q Plot of Log-Log Residuals')
 
     plt.tight_layout()
 
-    plt.savefig(
-        'charts/log_linear_regression_residuals.png',
-        dpi=150
-    )
+    plt.savefig('charts/log_linear_regression_residuals.png', dpi=150)
 
     plt.show()
+
 
 def log_breusch_pagan_test(model):
 
@@ -1450,50 +1271,26 @@ def log_breusch_pagan_test(model):
 
     exog = model.model.exog
 
-    bp_test = het_breuschpagan(
-        residuals,
-        exog
-    )
+    bp_test = het_breuschpagan(residuals, exog)
 
-    labels = [
-        'LM statistic',
-        'LM p-value',
-        'F statistic',
-        'F p-value'
-    ]
+    labels = ['LM statistic', 'LM p-value', 'F statistic', 'F p-value']
 
-    results = dict(
-        zip(
-            labels,
-            bp_test
-        )
-    )
+    results = dict(zip(labels, bp_test))
 
     print('\n')
 
     print('BREUSCH-PAGAN TEST - LOG-LOG')
 
-    print(
-        'LM statistic:',
-        results['LM statistic']
-    )
+    print('LM statistic:', results['LM statistic'])
 
-    print(
-        'LM p-value:',
-        results['LM p-value']
-    )
+    print('LM p-value:', results['LM p-value'])
 
-    print(
-        'F statistic:',
-        results['F statistic']
-    )
+    print('F statistic:', results['F statistic'])
 
-    print(
-        'F p-value:',
-        results['F p-value']
-    )
+    print('F p-value:', results['F p-value'])
 
     return results
+
 
 def linear_regression_phase(df_clean):
 
@@ -1501,77 +1298,45 @@ def linear_regression_phase(df_clean):
 
     print('\n')
 
-    linear_model = linear_regression(
-        df_clean
-    )
+    linear_model = linear_regression(df_clean)
 
     print('\n')
 
-    plot_linear_regression(
-        df_clean,
-        linear_model
-    )
+    plot_linear_regression(df_clean, linear_model)
 
     print('\n')
 
-    linear_residual_diagnostics(
-        linear_model
-    )
+    linear_residual_diagnostics(linear_model)
 
     print('\n')
 
-    breusch_pagan_test(
-        linear_model
-    )
+    breusch_pagan_test(linear_model)
 
     print('\n')
 
-    log_model = log_linear_regression(
-        df_clean
-    )
+    log_model = log_linear_regression(df_clean)
 
     print('\n')
 
-    log_residual_diagnostics(
-        log_model
-    )
+    log_residual_diagnostics(log_model)
 
     print('\n')
 
-    log_breusch_pagan_test(
-        log_model
-    )
+    log_breusch_pagan_test(log_model)
 
     return linear_model, log_model
 
 
-   
+# main program
 
-
-
-
-
-
-
-
-    
-
-            
-
-    
-       
-
-       
-#main program
-
-#data inspection
+# data inspection
 inspect_data(df_raw)
 print('\n')
 inspect_categorical(df_raw)
 
-#data cleaning
+# data cleaning
 
-#quality filters
+# quality filters
 df_clean = remove_subunits(df_raw)
 print('\n')
 inspect_quality_variables(df_clean)
@@ -1579,22 +1344,22 @@ print('\n')
 df_clean = apply_quality_filters(df_clean)
 print('\n')
 
-#missing values
+# missing values
 inspect_missing_values(df_clean)
 print('\n')
 
-#elevator encoding
+# elevator encoding
 df_clean = encode_elevator(df_clean)
 print(df_clean['elevator'].value_counts())
 print('\n')
 
-#Data type / Text parsing
+# Data type / Text parsing
 inspect_text_variables(df_clean)
 print('\n')
 df_clean = parse_text_variables(df_clean)
 print('\n')
 
-#final data validation
+# final data validation
 print('\n')
 df_clean = validate_clean_data(df_clean)
 print('\n')
@@ -1607,7 +1372,7 @@ descriptive_statistics(df_clean)
 print('\n')
 plot_boxplots(df_clean)
 
-#PHASE 2 — PROBABILITY & DISTRIBUTIONS
+# PHASE 2 — PROBABILITY & DISTRIBUTIONS
 print('\n')
 print('PHASE 2 — PROBABILITY & DISTRIBUTIONS')
 print('\n')
@@ -1623,7 +1388,7 @@ plot_log_comparison(df_clean)
 print('\n')
 print('\n')
 
-#PHASE 3 - SAMPLING & CONFIDENCE INTERVALS
+# PHASE 3 - SAMPLING & CONFIDENCE INTERVALS
 print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
 print('\n')
 population_parameters(df_clean, 'price_per_mq')
@@ -1634,7 +1399,7 @@ confidence_intervals(df_clean)
 print('\n')
 print('\n')
 
-#PHASE 4 - HYPOTHESIS TESTING
+# PHASE 4 - HYPOTHESIS TESTING
 print('PHASE 4 - HYPOTHESIS TESTING')
 print('\n')
 hypothesis_testing(df_clean)
@@ -1656,22 +1421,3 @@ print('\n')
 print('\n')
 linear_regression_phase(df_clean)
 print('\n')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
