@@ -240,15 +240,49 @@ La discussione copre l'**errore di tipo I** (rifiutare una H₀ vera — il 5% c
 
 ### Phase 5 — ANOVA
 
-L'estensione naturale della fase 4 a tutte e **32 le macrozone** insieme.
+**Fase completata.** L'estensione naturale della fase 4 a tutte e **32 le macrozone** insieme, su **16.334 annunci** (i 12 senza `macrozone` escludono sé stessi). Cinque funzioni orchestrate da `anova_phase`: `anova_analysis`, `welch_anova`, `residual_diagnostics`, `tukey_posthoc`, `plot_macrozone_boxplots`.
 
 > **H₀**: μ₁ = μ₂ = … = μ₃₂ — il prezzo medio al m² è uguale in ogni zona di Milano
 > **H₁**: almeno una zona differisce
 
-- **ANOVA a una via** su `price_per_mq` per `macrozone`: statistica F, gradi di libertà (31; 16.314), p-value, η² come quota di varianza spiegata dalla sola localizzazione.
-- **Verifica delle assunzioni**: test di Levene per l'omogeneità delle varianze e diagnostica dei residui. A Milano le varianze fra zone sono visibilmente disomogenee, quindi accanto all'ANOVA classica si esegue una **ANOVA di Welch** e le due si confrontano.
-- **Post-hoc**: **Tukey HSD** su tutte le 496 coppie, con le coppie significative riassunte anziché riversate in tabella, più la motivazione della correzione — 496 t-test non corretti ad α = 0,05 produrrebbero per costruzione ~25 falsi positivi.
-- Un box plot di `price_per_mq` per macrozona, ordinato per mediana, come controparte visiva del test.
+**ANOVA a una via** (`anova_analysis`)
+
+| | |
+|---|---|
+| F | **658,07** |
+| gradi di libertà | 31; 16.302 |
+| p | < 10⁻³⁰⁰ (restituito come 0.0) |
+| η² | **0,556** |
+
+H₀ è respinta senza margine di discussione, ma anche qui il p-value è la parte meno interessante: con oltre 16.000 osservazioni e un rapporto di 3,6 volte fra la zona più cara e la più economica, nessun altro esito era concepibile. La quantità che porta informazione è **η² = 0,556**: la sola appartenenza a una macrozona spiega il **55,6% della varianza del prezzo al m²**. Metà abbondante di ciò che distingue un annuncio da un altro, una volta tolta di mezzo la superficie, è geografia — ed è il numero che giustifica sia le dummy di zona della fase 8 sia l'intero deliverable della fase 10. η² è calcolato a mano dalla devianza fra i gruppi su quella totale, non ripreso da un output.
+
+**Verifica delle assunzioni** (`welch_anova`, `residual_diagnostics`)
+
+Levene: **statistica 89,40, p ≈ 0** — l'omogeneità delle varianze è violata in modo grossolano, come già lasciavano prevedere le deviazioni standard per zona (da € 826 a Forlanini a € 4.206 in Centro, un fattore 5). Da qui l'**ANOVA di Welch**, che non la assume: **F = 451,70** con gradi di libertà (31; 4.249,0) e p ≈ 0. Le due F non sono confrontabili fra loro come numeri — Welch penalizza pesantemente i gradi di libertà del denominatore, da 16.302 a 4.249 — ma la conclusione non si muove di un millimetro. È il caso in cui si dichiara che l'assunzione è violata **e** che il risultato regge lo stesso, invece di scegliere fra le due cose.
+
+`charts/anova_residuals.png` mostra il perché in forma grafica. I valori stimati sono 32 soli — le medie di gruppo — quindi i residui si dispongono in 32 strisce verticali, e **le strisce si allargano da sinistra a destra**: attorno a € 4.000/m² i residui stanno entro ±5.000, attorno a € 12.000/m² sfiorano ±15.000. Le zone care non sono solo più care, sono internamente **più disomogenee**. Il Q-Q plot dei residui conferma la coda destra pesante già nota dalla fase 2: la normalità dei residui è anch'essa violata, e con n = 16.334 il teorema del limite centrale la rende una violazione di scarsa conseguenza per il test F, a differenza dell'eteroschedasticità.
+
+**Post-hoc: Tukey HSD** (`tukey_posthoc`)
+
+Su tutte le **496 coppie**, **426 risultano significative** (86%) e 70 no. La correzione è obbligatoria: 496 t-test indipendenti ad α = 0,05 produrrebbero per costruzione ~25 falsi positivi, cioè più di un terzo delle 70 coppie che qui restano non significative.
+
+L'effetto della correzione si vede meglio su un caso già noto — **la coppia ravvicinata della fase 4**:
+
+| | fase 4 (Welch, non corretto) | fase 5 (Tukey, corretto) |
+|---|---|---|
+| `Ripamonti, Vigentino` vs `Porta Vittoria, Lodi` | p = **0,024** → rifiuto | p-adj = **0,992** → non rifiuto |
+
+Stessa differenza di 211 €/m², stessi dati, conclusione opposta. Nella fase 4 quel confronto era *l'unico* posto in cui si guardava; qui è uno dei 496, e il livello di confidenza è ricalibrato di conseguenza — l'intervallo di Tukey si allarga a [−626; +205] e include lo zero. Non è che uno dei due test sbagli: rispondono a due domande diverse, e la differenza fra le due è precisamente il problema dei confronti multipli.
+
+Le coppie con lo scarto più grande sono tutte confronti fra `Centro` (o `Bisceglie, Baggio, Olmi`) e il resto della città — la massima è **`Bisceglie, Baggio, Olmi` contro `Centro`, +8.511 €/m²**, la stessa della fase 4. All'estremo opposto, la più piccola differenza che sopravvive alla correzione vale **360 €/m²** (`Famagosta, Barona` contro `Uptown, Cascina Merlata, Viale Certosa`, p-adj = 0,027): sotto quella soglia, con queste numerosità, Tukey non distingue più.
+
+**Box plot per macrozona** (`plot_macrozone_boxplots`) — `charts/macrozone_boxplots.png`, le 32 zone ordinate per mediana crescente. È la controparte visiva del test e mostra tre cose che l'F non dice.
+
+La salita è **continua**: dalla mediana di € 3.216 di `Bisceglie, Baggio, Olmi` a € 11.481 del `Centro` non c'è nessun salto, nessuna soglia che separi "centro" da "periferia". Milano, sul prezzo al m², è un gradiente e non due mercati.
+
+La prima dozzina di zone forma però un **plateau**: da `Bisceglie` a `Udine, Lambrate` le mediane stanno tutte fra € 3.200 e € 4.500 — dodici zone in 1.300 € — mentre le ultime quattro coprono da sole quasi 2.000 €. È il motivo per cui le 70 coppie non significative di Tukey si concentrano quasi tutte in fondo alla classifica: là le zone sono davvero vicine.
+
+E l'**ampiezza delle scatole cresce con la mediana**: l'IQR di `Bisceglie` sta dentro il migliaio di euro, quello del `Centro` supera i cinquemila. È la stessa eteroschedasticità del grafico dei residui, vista da un'altra angolazione — comprare in centro non significa solo pagare di più, significa entrare in un mercato molto meno prevedibile.
 
 ### Phase 6 — Correlation
 
@@ -346,8 +380,8 @@ La pipeline per rigenerarlo:
 | 2. Probability & Distributions | ✅ **completata** — istogrammi, Q-Q plot, percentili, indici di forma, log |
 | 3. Sampling & Confidence Intervals | ✅ **completata** — CLT verificato, copertura misurata |
 | 4. Hypothesis Testing | ✅ **completata** — 4 test di Welch con effect size e IC |
-| 5. ANOVA | 🟡 **prossima fase** |
-| 6. Correlation | ⬜ da fare |
+| 5. ANOVA | ✅ **completata** — η² = 0,556, Welch, Tukey, diagnostica |
+| 6. Correlation | 🟡 **prossima fase** |
 | 7. Linear Regression | ⬜ da fare |
 | 8. Multiple Linear Regression | ⬜ da fare |
 | 9. Statistical Conclusions | ⬜ da fare |
@@ -359,18 +393,18 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-4
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-5
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure delle fasi 1-3 in PNG (6 file)
+├── charts/                             # figure delle fasi 1-5 in PNG (8 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) e `sampling_distributions.png` (fase 3); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) e `anova_residuals.png` + `macrozone_boxplots.png` (fase 5); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -408,13 +442,20 @@ confidence_intervals      → 1.000 intervalli t al 95% per ciascun n, copertura
 # fase 4
 two_sample_test           → helper: Levene, Welch, df, IC 95% della differenza, d di Cohen
 hypothesis_testing        → i 4 confronti (2 coppie di zone, elevator, condition)
+
+# fase 5 — orchestrate da anova_phase
+anova_analysis            → F, gradi di libertà, p, η² calcolato dalle devianze
+welch_anova               → Levene su 32 gruppi + ANOVA di Welch
+residual_diagnostics      → OLS price_per_mq ~ C(macrozone), residui e Q-Q plot
+tukey_posthoc             → Tukey HSD su 496 coppie, significative ordinate per scarto
+plot_macrozone_boxplots   → box plot delle 32 zone ordinate per mediana
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — l'import è ancora commentato in cima allo script e va riattivato alla fase 5 — e `matplotlib` per i grafici.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso dalla fase 5 con `statsmodels.api`, `anova_oneway` e `pairwise_tukeyhsd` — e `matplotlib` per i grafici.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
