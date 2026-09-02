@@ -189,20 +189,54 @@ Il risultato più istruttivo della fase è la riga n = 30. La copertura nominale
 
 ### Phase 4 — Hypothesis Testing
 
-Confronti formali fra due campioni su `price_per_mq`.
+**Fase completata.** Confronti formali fra due campioni su `price_per_mq`, tutti bilaterali con α = 0,05.
+
+L'apparato del test sta in **una sola funzione riusabile**, `two_sample_test(group_1, group_2)`, che restituisce test di Levene, t-test di Welch, gradi di libertà, intervallo di confidenza al 95% per la differenza fra le medie e d di Cohen. `hypothesis_testing` si limita a estrarre i gruppi e a chiamarla quattro volte: la logica statistica è scritta e verificata una volta sola, i confronti sono dati. I gradi di libertà di Welch–Satterthwaite e l'intervallo di confidenza sono calcolati esplicitamente dalla formula, non letti da un output già pronto — è la fase in cui costruire il test a mano è il punto.
 
 **Test 1 — due zone.**
 
 > **H₀**: μ(zona A) = μ(zona B) — il prezzo medio al m² è uguale nelle due zone
 > **H₁**: μ(zona A) ≠ μ(zona B) — bilaterale
 
-Si testano due coppie, scelte apposta per contrasto: una coppia lontanissima (`Centro`, n = 389, contro `Bisceglie, Baggio, Olmi`, n = 426) dove l'esito è scontato e la quantità interessante è la **dimensione dell'effetto**, non il p-value; e una coppia ravvicinata di macrozone di fascia media confrontabile, dove il test fa un lavoro vero.
+Due coppie scelte apposta per contrasto: una lontanissima, dove l'esito è scontato e la quantità interessante è la dimensione dell'effetto; e una ravvicinata — `Ripamonti, Vigentino` contro `Porta Vittoria, Lodi`, centroidi a 2,4 km, n quasi identici — dove il test fa un lavoro vero.
 
-**Test 2 — una caratteristica dell'immobile.** Stesso apparato applicato a `elevator` (con ascensore contro senza) e a `condition` (`Da ristrutturare` contro `Ottimo / Ristrutturato`), per mostrare che la verifica d'ipotesi non riguarda solo la geografia.
+| | `Centro` vs `Bisceglie, Baggio, Olmi` | `Ripamonti, Vigentino` vs `Porta Vittoria, Lodi` |
+|---|---|---|
+| n | 389 vs 426 | 511 vs 518 |
+| media €/m² | 11.812 vs 3.301 | 4.953 vs 5.164 |
+| differenza | **+8.511** | **−211** |
+| t (Welch) | 38,90 | −2,26 |
+| gradi di libertà | 428,8 | 1.023,4 |
+| p | 9,6 × 10⁻¹⁴³ | **0,024** |
+| IC 95% della differenza | [8.081; 8.941] | **[−393; −28]** |
+| d di Cohen | **2,84** | **−0,14** |
+| Levene (p) | 5,7 × 10⁻⁶⁴ | 0,324 |
 
-Per ogni test si riportano: **statistica t, gradi di libertà, p-value, livello di significatività α = 0,05, intervallo di confidenza per la differenza fra le medie e d di Cohen**. Si usa il **t-test di Welch** anziché quello di Student, dato che la varianza in `Centro` non ha nulla a che vedere con quella in periferia, e si riporta il test di Levene a giustificarlo.
+Le due colonne dicono la stessa cosa — "rifiuta H₀" — e non significano niente di simile.
 
-La discussione copre l'**errore di tipo I** (rifiutare una H₀ vera — il 5% che accettiamo fissando α), l'**errore di tipo II** e il motivo per cui un n grande rende "significative" differenze minuscole e prive di senso: con centinaia di annunci per zona, uno scarto di 50 €/m² può superare p < 0,05 senza significare nulla per chi compra. Da qui la dimensione dell'effetto accanto a ogni p-value.
+A sinistra d = 2,84: le due distribuzioni sono separate di quasi tre deviazioni standard, il p-value è un numero senza contenuto informativo e la quantità che conta è l'intervallo di confidenza, che colloca il divario fra € 8.081 e € 8.941 al m².
+
+A destra sta il risultato didattico della fase. p = 0,024 rifiuta H₀ ad α = 0,05, ma **d = −0,14 è un effetto trascurabile** per le convenzioni di Cohen (piccolo = 0,2), e soprattutto l'intervallo di confidenza — [−393; −28] — ha l'estremo superiore a 28 €/m² dallo zero. Su un appartamento di 80 m² il vero divario fra le due zone potrebbe essere di € 31.000 come di € 2.200: il test ha stabilito che le due zone non sono identiche, e null'altro. È esattamente il motivo per cui la dimensione dell'effetto e l'intervallo di confidenza stanno accanto a ogni p-value, e non è un avvertimento astratto — con n ≈ 500 per gruppo, una differenza del 4% supera la soglia di significatività.
+
+**Test 2 — una caratteristica dell'immobile.** Lo stesso apparato applicato a `elevator` e a `condition`, per mostrare che la verifica d'ipotesi non riguarda solo la geografia.
+
+| | `elevator` sì vs no | `Da ristrutturare` vs `Ottimo / Ristrutturato` |
+|---|---|---|
+| n | 12.367 vs 3.979 | 1.560 vs 7.004 |
+| media €/m² | 5.894 vs 4.773 | 5.160 vs 6.145 |
+| differenza | **+1.121** | **−984** |
+| t (Welch) | 26,13 | −14,28 |
+| gradi di libertà | 8.072,5 | 2.554,0 |
+| p | 1,6 × 10⁻¹⁴⁴ | 1,5 × 10⁻⁴⁴ |
+| IC 95% della differenza | [1.037; 1.205] | [−1.120; −849] |
+| d di Cohen | 0,43 | −0,37 |
+| Levene (p) | 4,8 × 10⁻¹⁹ | 1,1 × 10⁻⁴ |
+
+Entrambi gli effetti sono nettamente significativi e di dimensione media — d = 0,43 e d = −0,37, un ordine di grandezza sopra quello della coppia di zone ravvicinate. Sono però **differenze grezze, senza alcun controllo**: l'ascensore è più frequente negli edifici recenti e centrali, e gli immobili da ristrutturare sono sistematicamente più grandi e più vecchi. Quanto di questi 1.121 €/m² appartenga davvero all'ascensore, e non alla zona o al tipo di edificio in cui l'ascensore si trova, è una domanda che il t-test non può porsi: serve la regressione multipla della fase 8, dove le stesse variabili rientrano controllate per zona e superficie. Il confronto fra il coefficiente della fase 8 e la differenza grezza qui sopra è uno dei risultati previsti della fase 9.
+
+**Su Levene e Welch.** Il test di Levene rifiuta l'omogeneità delle varianze in **tre casi su quattro** — clamorosamente per `Centro` contro periferia (σ = 4.206 contro 1.009), dove le due zone non hanno in comune nemmeno l'ordine di grandezza della dispersione. Solo per la coppia ravvicinata non rifiuta (p = 0,324). Si usa comunque **Welch dappertutto**: quando le varianze sono davvero omogenee Welch coincide in pratica con Student — e infatti lì i gradi di libertà scendono a 1.023,4 contro i 1.027 di Student, una differenza irrilevante — mentre quando non lo sono, Student sbaglia. Un test che non costa nulla nel caso favorevole e salva nel caso sfavorevole non ha bisogno di essere scelto caso per caso. Si noti anche il crollo dei gradi di libertà nel primo confronto: 428,8 contro gli 813 di Student, ed è Welch che sconta la varianza sproporzionata di `Centro`.
+
+La discussione copre l'**errore di tipo I** (rifiutare una H₀ vera — il 5% che accettiamo fissando α), l'**errore di tipo II** e il motivo per cui un n grande rende "significative" differenze minuscole e prive di senso — cosa che in questa fase non è un'ipotesi ma un risultato misurato, la colonna di destra della prima tabella.
 
 ### Phase 5 — ANOVA
 
@@ -311,8 +345,8 @@ La pipeline per rigenerarlo:
 | 1. Descriptive Statistics | ✅ **completata** — tabella statistiche + box plot |
 | 2. Probability & Distributions | ✅ **completata** — istogrammi, Q-Q plot, percentili, indici di forma, log |
 | 3. Sampling & Confidence Intervals | ✅ **completata** — CLT verificato, copertura misurata |
-| 4. Hypothesis Testing | 🟡 **prossima fase** |
-| 5. ANOVA | ⬜ da fare |
+| 4. Hypothesis Testing | ✅ **completata** — 4 test di Welch con effect size e IC |
+| 5. ANOVA | 🟡 **prossima fase** |
 | 6. Correlation | ⬜ da fare |
 | 7. Linear Regression | ⬜ da fare |
 | 8. Multiple Linear Regression | ⬜ da fare |
@@ -325,7 +359,7 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-3
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-4
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
@@ -370,6 +404,10 @@ plot_log_comparison       → price contro log(price), affiancati, con curva nor
 population_parameters     → μ e σ (ddof=0) di price_per_mq sulla popolazione
 draw_sample               → 1.000 campioni per n = 30/100/500, istogrammi + SE empirico vs teorico
 confidence_intervals      → 1.000 intervalli t al 95% per ciascun n, copertura misurata
+
+# fase 4
+two_sample_test           → helper: Levene, Welch, df, IC 95% della differenza, d di Cohen
+hypothesis_testing        → i 4 confronti (2 coppie di zone, elevator, condition)
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
