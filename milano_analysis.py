@@ -491,7 +491,7 @@ def draw_sample(df_clean):
         sample_mean = sample['price_per_mq'].mean()
         sample_means_500.append(sample_mean)
 
-    fig, axes = plt.subplots(1,3)
+    fig, axes = plt.subplots(1,3, figsize=(15,5), sharex=True)
 
     axes[0].hist(sample_means_30, bins=30, density=True)
     axes[0].set_title('n = 30')

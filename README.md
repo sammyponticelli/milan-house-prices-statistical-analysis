@@ -156,12 +156,36 @@ Una nota di metodo: con n = 16.346 i test formali di normalità (Shapiro-Wilk, D
 
 ### Phase 3 — Sampling & Confidence Intervals
 
-Questa fase tratta i 16.346 annunci puliti come **popolazione** — i suoi parametri sono noti — e ne estrae campioni, così che stima e verità siano effettivamente confrontabili.
+**Fase completata.** Questa fase tratta i 16.346 annunci puliti come **popolazione** — i suoi parametri sono noti — e ne estrae campioni, così che stima e verità siano effettivamente confrontabili. Tutto gira su `price_per_mq`.
 
-- **Distribuzione della media campionaria**: 1.000 campioni casuali con n = 30, n = 100, n = 500; istogramma delle medie campionarie per ciascuna numerosità.
-- **Teorema del limite centrale in pratica**: la distribuzione della media campionaria assume forma normale anche se la distribuzione dei prezzi sottostante è fortemente asimmetrica, e la sua dispersione si riduce del fattore atteso √n. Confronto fra errore standard empirico e σ/√n teorico.
-- **Intervalli di confidenza al 95%** per il prezzo medio al m², per ciascuna numerosità campionaria, usando la distribuzione *t*.
-- **Verifica della copertura**: sui 1.000 campioni, quanti intervalli contengono davvero la media della popolazione? Il risultato deve attestarsi vicino al 95%, ed è la dimostrazione più diretta dell'intero progetto di che cosa *significhi* un livello di confidenza — un'affermazione sulla procedura, non sul singolo intervallo.
+- **Parametri di popolazione** (`population_parameters`): μ = **€ 5.621,55**/m², σ = **€ 2.644,29**/m². σ è calcolata con `ddof=0` — è una popolazione, non un campione, e il denominatore giusto è N.
+- **Distribuzione della media campionaria** (`draw_sample`): 1.000 campioni senza reinserimento per ciascuna numerosità n = 30, 100, 500, con l'istogramma delle 1.000 medie per ogni n.
+- **Errore standard empirico contro teorico**, nella stessa funzione: deviazione standard delle 1.000 medie a confronto con σ/√n.
+- **Intervalli di confidenza al 95%** con la distribuzione *t* e **verifica della copertura** (`confidence_intervals`): per ciascun n si costruiscono 1.000 intervalli — ognuno dalla sua media e dalla sua deviazione standard campionaria, come farebbe chi ha in mano un solo campione — e si conta quanti contengono davvero μ.
+
+**Teorema del limite centrale in pratica**
+
+| n | SE empirico | σ/√n teorico |
+|---|---|---|
+| 30 | € 478,0 | € 482,8 |
+| 100 | € 259,2 | € 264,4 |
+| 500 | € 111,9 | € 118,3 |
+
+Le due colonne coincidono a meno di pochi euro, e la dispersione si dimezza passando da n = 100 a n = 500 quasi esattamente del fattore √5 previsto — su una popolazione con asimmetria 1,83, dove la singola osservazione non è affatto normale. L'istogramma delle medie campionarie è invece simmetrico e campanulare già a n = 30: è il CLT che si vede, non che si cita.
+
+Lo scarto sistematico del SE empirico verso il basso (sempre un po' sotto il teorico, e la cosa si accentua a n = 500) non è rumore: i campioni sono estratti **senza reinserimento** da una popolazione finita, quindi il termine di riferimento esatto è σ/√n corretto per il fattore di popolazione finita √((N−n)/(N−1)), che a n = 500 porta il valore teorico da € 118,3 a € 116,4. Il confronto resta impostato sulla formula standard, perché è quella la formula di cui la fase discute.
+
+**Copertura degli intervalli**
+
+| n | copertura osservata |
+|---|---|
+| 30 | ~93% |
+| 100 | ~94-95% |
+| 500 | ~95-96% |
+
+Il risultato più istruttivo della fase è la riga n = 30. La copertura nominale è 95%, ma a n = 30 gli intervalli ne coprono sistematicamente **~93%** — verificato su ripetizioni indipendenti, non è un caso singolo. L'intervallo *t* assume una popolazione normale; qui la popolazione ha asimmetria 1,83 e a n = 30 il CLT non ha ancora finito il suo lavoro, così l'intervallo mantiene meno di quanto promette. A n = 100 e n = 500 la copertura risale a ~95%, come deve. Il livello di confidenza è una proprietà **della procedura sotto le sue assunzioni**, non una garanzia che valga a qualunque numerosità: quando l'assunzione è violata la procedura sotto-copre, e il modo di accorgersene è misurarlo.
+
+**Nota sulla riproducibilità:** non è fissato alcun seme casuale, quindi i numeri di copertura cambiano di qualche decimo a ogni esecuzione (l'errore Monte Carlo su 1.000 ripetizioni vale circa ±0,7 punti). I valori qui sopra sono riportati come intervalli per questo motivo. Un `random_state` fisso renderebbe la tabella riproducibile alla cifra.
 
 ### Phase 4 — Hypothesis Testing
 
@@ -286,8 +310,8 @@ La pipeline per rigenerarlo:
 | 0. Pulizia dei dati | ✅ **completata** — 18.017 → 16.346 annunci |
 | 1. Descriptive Statistics | ✅ **completata** — tabella statistiche + box plot |
 | 2. Probability & Distributions | ✅ **completata** — istogrammi, Q-Q plot, percentili, indici di forma, log |
-| 3. Sampling & Confidence Intervals | 🟡 **prossima fase** |
-| 4. Hypothesis Testing | ⬜ da fare |
+| 3. Sampling & Confidence Intervals | ✅ **completata** — CLT verificato, copertura misurata |
+| 4. Hypothesis Testing | 🟡 **prossima fase** |
 | 5. ANOVA | ⬜ da fare |
 | 6. Correlation | ⬜ da fare |
 | 7. Linear Regression | ⬜ da fare |
@@ -301,18 +325,18 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-2
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-3
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure delle fasi 1-2 in PNG (5 file)
+├── charts/                             # figure delle fasi 1-3 in PNG (6 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti dalle fasi 1-2 sono `boxplots.png`, `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png`; lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) e `sampling_distributions.png` (fase 3); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -341,13 +365,18 @@ distribution_shape        → asimmetria e curtosi × 3 variabili
 plot_normal_distribution  → istogrammi in densità + curva normale sovrapposta
 log_transform             → asimmetria e curtosi di log(price)
 plot_log_comparison       → price contro log(price), affiancati, con curva normale
+
+# fase 3
+population_parameters     → μ e σ (ddof=0) di price_per_mq sulla popolazione
+draw_sample               → 1.000 campioni per n = 30/100/500, istogrammi + SE empirico vs teorico
+confidence_intervals      → 1.000 intervalli t al 95% per ciascun n, copertura misurata
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot e per le curve normali sovrapposte agli istogrammi), `statsmodels` per le fasi 5, 7 e 8 — l'import è ancora commentato in cima allo script e va riattivato alla fase 5 — e `matplotlib` per i grafici.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — l'import è ancora commentato in cima allo script e va riattivato alla fase 5 — e `matplotlib` per i grafici.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
