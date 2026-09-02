@@ -486,15 +486,51 @@ Entrambi stimati sulle stesse 14.639 righe e sulla stessa variabile dipendente `
 
 ### Phase 9 — Statistical Conclusions
 
-Non *"le case più grandi costano di più"*, ma affermazioni della forma:
+**Fase completata.** Nessuna nuova stima: la fase riusa il modello della fase 8 — che `multiple_regression_phase` restituisce insieme al frame dei dati — e ne ricava la tabella su cui si scrivono le conclusioni. Tre funzioni: `conclusions_table` (coefficienti, intervalli di confidenza al 95%, p-value, flag di significatività), la partizione fra significativi e non dentro `conclusions_phase`, e `zone_variance_share`.
 
-> La superficie presenta una relazione positiva e statisticamente significativa con il prezzo (β = …, p < 0,001). Dopo aver controllato per le altre caratteristiche dell'immobile **e per la zona**, la superficie rimane una delle variabili maggiormente associate al prezzo, con un'elasticità stimata di … — un aumento dell'1% della superficie è associato a un aumento del …% del prezzo, a parità di tutto il resto.
+**I predittori, con il loro intervallo di confidenza**
 
-La fase raccoglie: i predittori significativi con la loro dimensione d'effetto e i relativi intervalli di confidenza; i predittori che risultano **non** significativi una volta controllata la zona; la quota di varianza del prezzo attribuibile alla posizione; e i limiti dell'analisi, dichiarati senza giri di parole —
+| predittore | β | IC 95% | significativo a α = 0,05 |
+|---|---|---|---|
+| `log_surface` | **0,8019** | [0,7878; 0,8160] | ✅ |
+| `luxury` | **0,3642** | [0,3526; 0,3757] | ✅ |
+| `bathrooms` | 0,0893 | [0,0806; 0,0980] | ✅ |
+| `condition_numeric` | 0,0811 | [0,0769; 0,0853] | ✅ |
+| `elevator` | 0,0789 | [0,0699; 0,0878] | ✅ |
+| `floor` | 0,0121 | [0,0105; 0,0137] | ✅ |
+| `rooms` | −0,0018 | [−0,0086; 0,0049] | ❌ |
+| `heating` autonomo | −0,0035 | [−0,0283; 0,0212] | ❌ |
+| `heating` centralizzato | −0,0108 | [−0,0353; 0,0137] | ❌ |
 
-- si tratta di **prezzi richiesti**, non di prezzi di transazione, e a Milano lo scarto fra richiesta e rogito è reale;
-- gli annunci sono un'**istantanea**, quindi niente di quanto qui affermato riguarda un andamento nel tempo;
-- tutto è **associativo**. Nessuna pretesa causale viene avanzata, e nessuna è ottenibile da questo disegno.
+**Sei significativi su nove.** L'intervallo di confidenza, e non il p-value, è il modo in cui questa fase riporta i risultati: dice quanto vale l'effetto e con quale precisione, mentre il p-value dice solo se è distinguibile da zero — distinzione su cui la fase 4 aveva già insistito con la coppia di zone ravvicinate.
+
+**Le conclusioni, nella forma in cui vanno scritte**
+
+> La **superficie** presenta una relazione positiva e statisticamente significativa con il prezzo (β = 0,802, IC 95% [0,788; 0,816], p < 0,001). Dopo aver controllato per le altre caratteristiche dell'immobile **e per la zona**, resta di gran lunga il predittore più forte: un aumento dell'1% della superficie è associato a un aumento dello **0,80%** del prezzo, a parità di tutto il resto.
+
+> Il flag **lusso** è associato a un prezzo superiore del **44%** (β = 0,364, IC 95% [0,353; 0,376], p < 0,001) rispetto a un immobile con le stesse caratteristiche e nella stessa zona. Senza controllo di zona lo stesso coefficiente valeva 0,679, cioè un premio del 97%: **più della metà di quello che sembra un premio di lusso è in realtà il quartiere**.
+
+> Un **bagno** aggiuntivo è associato a un prezzo superiore del **9,3%** (β = 0,089, IC 95% [0,081; 0,098], p < 0,001), un gradino nella scala dello **stato di conservazione** all'**8,4%** (β = 0,081, IC 95% [0,077; 0,085]), la presenza dell'**ascensore** all'**8,2%** (β = 0,079, IC 95% [0,070; 0,088]) e ogni **piano** di altezza all'**1,2%** (β = 0,012, IC 95% [0,011; 0,014]). Le percentuali sono e^β − 1; per la superficie, che entra in logaritmo, β è direttamente un'elasticità e la conversione non si applica.
+
+> Il **numero di locali** non presenta un'associazione significativa con il prezzo una volta controllate superficie, bagni e zona (β = −0,002, IC 95% [−0,009; 0,005], p = 0,593). Lo stesso vale per il **tipo di riscaldamento** (p = 0,779 e p = 0,387). Nel caso dei locali la conclusione è più forte di un semplice "non significativo": l'intervallo di confidenza colloca l'effetto vero fra **−0,9% e +0,5%**, cioè lo esclude in entrambe le direzioni. Non è ignoranza sull'effetto, è la constatazione che è trascurabile.
+
+**Quanto pesa la posizione** (`zone_variance_share`)
+
+| | R² adjusted |
+|---|---|
+| modello senza dummy di zona | 0,8458 |
+| modello con dummy di zona | 0,9059 |
+| **differenza** | **+0,0602** |
+
+Sei punti di varianza in più su un modello che ne spiegava già l'84,6%. Il numero va letto insieme a quello della fase 5, dove la macrozona da sola spiegava il **55,6%** della varianza del prezzo al m² (η² = 0,556): non si contraddicono, rispondono a due domande diverse. Quanto spiega la posizione **da sola**: moltissimo. Quanto aggiunge a chi conosce già superficie, bagni, stato e piano dell'immobile: sei punti — perché una parte dell'informazione geografica è già contenuta nelle caratteristiche stesse, dato che gli immobili grandi e ristrutturati sono distribuiti in modo tutt'altro che uniforme sulla città.
+
+**I limiti, dichiarati senza giri di parole**
+
+- Si tratta di **prezzi richiesti**, non di prezzi di transazione. A Milano lo scarto fra richiesta e rogito è reale e non è costante fra le zone, quindi non è nemmeno un errore che si annulla nei confronti.
+- Gli annunci sono un'**istantanea**. Niente di quanto affermato qui riguarda un andamento nel tempo, e i coefficienti non dicono nulla su come si muoveranno i prezzi.
+- Tutto è **associativo**. Nessuna pretesa causale viene avanzata, e nessuna è ottenibile da questo disegno: β = 0,079 sull'ascensore non significa che installarne uno faccia salire il prezzo dell'8,2%, ma che gli immobili con ascensore costano in media l'8,2% in più di immobili altrimenti simili. La differenza non è formale — chi ha l'ascensore ha anche, sistematicamente, un edificio di un certo tipo.
+- Il modello gira su **14.639 annunci su 16.346**: il 10,4% è escluso dalla listwise deletion, e chi ha i campi incompleti non è un campione casuale degli annunci.
+- Restano **assunzioni violate ma dichiarate**: l'eteroschedasticità è ridotta e non eliminata (per questo gli HC3), e i residui hanno una coda sinistra pesante.
 
 ### Phase 10 — Mappa del prezzo medio al m² per zona
 
@@ -535,7 +571,7 @@ La pipeline per rigenerarlo:
 | 6. Correlation | ✅ **completata** — Pearson vs Spearman, heatmap, multicollinearità |
 | 7. Linear Regression | ✅ **completata** — semplice e log-log, elasticità 1,09 |
 | 8. Multiple Linear Regression | ✅ **completata** — R² adj = 0,906, VIF, dummy di zona, HC3 |
-| 9. Statistical Conclusions | 🟡 **prossima fase** |
+| 9. Statistical Conclusions | ✅ **completata** — effetti, IC, limiti dichiarati |
 | 10. Mappa del prezzo medio al m² per zona | ⬜ da fare — mappa di riferimento già disponibile |
 
 ---
@@ -544,7 +580,7 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-8
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-9
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
@@ -624,7 +660,13 @@ zone_comparison           → stesso modello con e senza dummy di zona, affianca
 robust_standard_errors    → HC3 contro errori standard classici
 multiple_residual_diagnostics → residui vs stimati + Q-Q plot
 model_comparison          → log-log semplice contro completo, sulle stesse righe
+
+# fase 9 — orchestrate da conclusions_phase
+conclusions_table         → coefficienti, IC 95%, p-value, flag di significatività
+zone_variance_share       → R² adj con e senza zona, e la differenza
 ```
+
+La fase 8 restituisce `regression_data` e il modello, che il main passa alla fase 9: le conclusioni si leggono dal modello già stimato invece di rifittarlo.
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
