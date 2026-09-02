@@ -7,6 +7,7 @@ from statsmodels.stats.oneway import anova_oneway
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import seaborn as sns
 from statsmodels.stats.diagnostic import het_breuschpagan
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # load data
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
@@ -1266,6 +1267,200 @@ def linear_regression_phase(df_clean):
     return linear_model, log_model
 
 
+def prepare_regression_data(df_clean):
+
+    regression_data = prepare_correlation_data(df_clean)
+
+    regression_data['log_price'] = np.log(regression_data['price'])
+    regression_data['log_surface'] = np.log(regression_data['surface_mq'])
+
+    variables = [
+        'log_price',
+        'log_surface',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'elevator',
+        'floor',
+        'heating',
+        'luxury',
+        'macrozone',
+    ]
+
+    regression_data = regression_data[variables].dropna()
+
+    print('REGRESSION DATA')
+    print('rows before dropna:', len(df_clean))
+    print('rows after dropna:', len(regression_data))
+
+    return regression_data
+
+
+def vif_analysis(regression_data):
+
+    variables = [
+        'log_surface',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'elevator',
+        'floor',
+        'luxury',
+    ]
+
+    X = sm.add_constant(regression_data[variables])
+
+    vif = pd.DataFrame(
+        {
+            'variable': variables,
+            'VIF': [
+                variance_inflation_factor(X.values, i + 1)
+                for i in range(len(variables))
+            ],
+        }
+    )
+
+    print('VIF')
+    print(vif.round(2))
+
+    return vif
+
+
+def multiple_regression(regression_data):
+
+    formula = (
+        'log_price ~ log_surface + rooms + bathrooms + condition_numeric'
+        ' + elevator + floor + C(heating) + luxury + C(macrozone)'
+    )
+
+    model = sm.formula.ols(formula, data=regression_data).fit()
+
+    coefficients = pd.DataFrame({'coefficient': model.params, 'p-value': model.pvalues})
+    coefficients = coefficients[~coefficients.index.str.contains('macrozone')]
+
+    print('MULTIPLE LINEAR REGRESSION')
+    print('R-squared:', model.rsquared)
+    print('Adjusted R-squared:', model.rsquared_adj)
+    print('AIC:', model.aic)
+    print('\n')
+    print(coefficients.round(4))
+
+    return model
+
+
+def zone_comparison(regression_data):
+
+    formula = (
+        'log_price ~ log_surface + rooms + bathrooms + condition_numeric'
+        ' + elevator + floor + C(heating) + luxury'
+    )
+
+    without_zone = sm.formula.ols(formula, data=regression_data).fit()
+    with_zone = sm.formula.ols(formula + ' + C(macrozone)', data=regression_data).fit()
+
+    comparison = pd.DataFrame(
+        {
+            'coef no zone': without_zone.params,
+            'p no zone': without_zone.pvalues,
+            'coef with zone': with_zone.params,
+            'p with zone': with_zone.pvalues,
+        }
+    )
+    comparison = comparison[~comparison.index.str.contains('macrozone')]
+
+    print('WITH AND WITHOUT ZONE DUMMIES')
+    print('Adjusted R-squared without zone:', without_zone.rsquared_adj)
+    print('Adjusted R-squared with zone:', with_zone.rsquared_adj)
+    print('\n')
+    print(comparison.round(4).to_string())
+
+    return comparison
+
+
+def robust_standard_errors(model):
+
+    robust_model = model.model.fit(cov_type='HC3')
+
+    comparison = pd.DataFrame(
+        {
+            'OLS std error': model.bse,
+            'HC3 std error': robust_model.bse,
+            'HC3 p-value': robust_model.pvalues,
+        }
+    )
+    comparison = comparison[~comparison.index.str.contains('macrozone')]
+
+    print('ROBUST STANDARD ERRORS (HC3)')
+    print(comparison.round(4))
+
+    return robust_model
+
+
+def multiple_residual_diagnostics(model):
+
+    fitted_values = model.fittedvalues
+    residuals = model.resid
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    axes[0].scatter(fitted_values, residuals, alpha=0.3)
+    axes[0].axhline(0, linestyle='--')
+    axes[0].set_title('Multiple Regression Residuals vs Fitted')
+    axes[0].set_xlabel('Fitted Log Price')
+    axes[0].set_ylabel('Residuals')
+
+    stats.probplot(residuals, dist='norm', plot=axes[1])
+    axes[1].set_title('Q-Q Plot of Residuals')
+
+    plt.tight_layout()
+    plt.savefig('charts/multiple_regression_residuals.png', dpi=150)
+    plt.show()
+
+    return residuals
+
+
+def model_comparison(regression_data, model):
+
+    log_model = sm.formula.ols('log_price ~ log_surface', data=regression_data).fit()
+
+    comparison = pd.DataFrame(
+        {
+            'model': ['log-log simple', 'multiple'],
+            'Adjusted R-squared': [log_model.rsquared_adj, model.rsquared_adj],
+            'AIC': [log_model.aic, model.aic],
+        }
+    )
+
+    print('MODEL COMPARISON')
+    print(comparison.round(4))
+
+    return comparison
+
+
+def multiple_regression_phase(df_clean):
+
+    print('\n')
+    print('PHASE 8 - MULTIPLE LINEAR REGRESSION')
+    print('\n')
+
+    regression_data = prepare_regression_data(df_clean)
+    print('\n')
+    vif_analysis(regression_data)
+    print('\n')
+    model = multiple_regression(regression_data)
+    print('\n')
+    zone_comparison(regression_data)
+    print('\n')
+    robust_standard_errors(model)
+    print('\n')
+    multiple_residual_diagnostics(model)
+    print('\n')
+    model_comparison(regression_data, model)
+    print('\n')
+
+    return model
+
+
 # main program
 
 # data cleaning
@@ -1291,3 +1486,6 @@ correlation_phase(df_clean)
 
 # PHASE 7 - LINEAR REGRESSION
 linear_regression_phase(df_clean)
+
+# PHASE 8 - MULTIPLE LINEAR REGRESSION
+multiple_regression_phase(df_clean)
