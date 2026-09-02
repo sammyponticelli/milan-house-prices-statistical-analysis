@@ -167,25 +167,37 @@ Una nota di metodo: con n = 16.346 i test formali di normalità (Shapiro-Wilk, D
 
 | n | SE empirico | σ/√n teorico |
 |---|---|---|
-| 30 | € 478,0 | € 482,8 |
-| 100 | € 259,2 | € 264,4 |
-| 500 | € 111,9 | € 118,3 |
+| 30 | € 482,82 | € 482,78 |
+| 100 | € 262,73 | € 264,43 |
+| 500 | € 120,82 | € 118,26 |
 
-Le due colonne coincidono a meno di pochi euro, e la dispersione si dimezza passando da n = 100 a n = 500 quasi esattamente del fattore √5 previsto — su una popolazione con asimmetria 1,83, dove la singola osservazione non è affatto normale. L'istogramma delle medie campionarie è invece simmetrico e campanulare già a n = 30: è il CLT che si vede, non che si cita.
+Le due colonne coincidono a meno di pochi euro — a n = 30 le prime tre cifre sono le stesse — e la dispersione si riduce passando da n = 100 a n = 500 del fattore √5 previsto, su una popolazione con asimmetria 1,83 dove la singola osservazione non è affatto normale. L'istogramma delle medie campionarie è invece simmetrico e campanulare già a n = 30: è il CLT che si vede, non che si cita.
 
-Lo scarto sistematico del SE empirico verso il basso (sempre un po' sotto il teorico, e la cosa si accentua a n = 500) non è rumore: i campioni sono estratti **senza reinserimento** da una popolazione finita, quindi il termine di riferimento esatto è σ/√n corretto per il fattore di popolazione finita √((N−n)/(N−1)), che a n = 500 porta il valore teorico da € 118,3 a € 116,4. Il confronto resta impostato sulla formula standard, perché è quella la formula di cui la fase discute.
+Un termine di confronto più esatto esisterebbe: i campioni sono estratti **senza reinserimento** da una popolazione finita, quindi la formula corretta è σ/√n moltiplicata per il fattore di popolazione finita √((N−n)/(N−1)), che a n = 500 porta il valore teorico da € 118,26 a € 116,40. La correzione è trascurabile perché n resta piccolo rispetto a N = 16.346, e il confronto è lasciato sulla formula standard perché è quella di cui la fase discute.
 
 **Copertura degli intervalli**
 
 | n | copertura osservata |
 |---|---|
-| 30 | ~93% |
-| 100 | ~94-95% |
-| 500 | ~95-96% |
+| 30 | **94,2%** |
+| 100 | **93,8%** |
+| 500 | **94,5%** |
 
-Il risultato più istruttivo della fase è la riga n = 30. La copertura nominale è 95%, ma a n = 30 gli intervalli ne coprono sistematicamente **~93%** — verificato su ripetizioni indipendenti, non è un caso singolo. L'intervallo *t* assume una popolazione normale; qui la popolazione ha asimmetria 1,83 e a n = 30 il CLT non ha ancora finito il suo lavoro, così l'intervallo mantiene meno di quanto promette. A n = 100 e n = 500 la copertura risale a ~95%, come deve. Il livello di confidenza è una proprietà **della procedura sotto le sue assunzioni**, non una garanzia che valga a qualunque numerosità: quando l'assunzione è violata la procedura sotto-copre, e il modo di accorgersene è misurarlo.
+Tutte e tre stanno sotto il 95% nominale, ma la lettura corretta di questa tabella richiede di sapere quanto vale il suo margine d'errore. Ogni copertura è essa stessa una stima, ricavata da 1.000 ripetizioni: il suo errore Monte Carlo vale circa **±0,7 punti**. Le tre cifre sono quindi compatibili sia fra loro sia con il 95%, e **da questa singola esecuzione non si può concludere granché** — men che meno che n = 100 copra peggio di n = 30, che è quello che la tabella sembra dire.
 
-**Nota sulla riproducibilità:** non è fissato alcun seme casuale, quindi i numeri di copertura cambiano di qualche decimo a ogni esecuzione (l'errore Monte Carlo su 1.000 ripetizioni vale circa ±0,7 punti). I valori qui sopra sono riportati come intervalli per questo motivo. Un `random_state` fisso renderebbe la tabella riproducibile alla cifra.
+L'andamento vero si vede solo ripetendo l'intero esperimento. Su **sei serie indipendenti** da 1.000 intervalli ciascuna la copertura media risulta:
+
+| n | media di 6 serie | intervallo osservato |
+|---|---|---|
+| 30 | **93,53%** | 93,0 – 93,9 |
+| 100 | 94,50% | 93,8 – 95,9 |
+| 500 | 95,17% | 94,5 – 96,2 |
+
+Adesso il quadro è leggibile. A n = 30 tutte e sei le serie cadono fra 93,0 e 93,9, senza mai avvicinarsi al 95%: la sotto-copertura è sistematica, e la deviazione standard fra serie (0,35 punti) è troppo piccola perché si tratti di rumore. A n = 500 la media risale a 95,17%, cioè al valore nominale. Serve un ordine di grandezza in più di ripetizioni per vedere emergere dal rumore quello che una sola tabella non può mostrare. La spiegazione è quella attesa — l'intervallo *t* assume una popolazione normale, qui l'asimmetria è 1,83 e a n = 30 il CLT non ha ancora finito il suo lavoro, così l'intervallo mantiene meno di quanto promette — ma è una spiegazione che questa singola tabella **non basta a dimostrare**.
+
+È il risultato metodologico della fase, e vale più di una copertura ordinata: il livello di confidenza è una proprietà **della procedura sotto le sue assunzioni**, e misurarla richiede a sua volta abbastanza dati per distinguere il segnale dal rumore. Portare le ripetizioni da 1.000 a 10.000 ridurrebbe il margine a ±0,2 punti e renderebbe la tabella leggibile per quello che sembra dire.
+
+**Nota sulla riproducibilità:** `draw_sample` e `confidence_intervals` costruiscono ciascuna un generatore `np.random.default_rng(42)` e lo passano a ogni `.sample(...)`. Due esecuzioni consecutive danno output identico riga per riga, verificato. Il generatore va creato **una volta fuori dal ciclo** e lasciato avanzare: passare `random_state=42` direttamente a `.sample()` produrrebbe 1.000 copie dello stesso campione, non 1.000 campioni riproducibili.
 
 ### Phase 4 — Hypothesis Testing
 

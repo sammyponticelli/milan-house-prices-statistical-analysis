@@ -553,22 +553,25 @@ def draw_sample(df_clean):
 
     population_std = df_clean['price_per_mq'].std(ddof=0)
 
+    # same seed at every run, but the generator advances at every draw
+    rng = np.random.default_rng(42)
+
     sample_means_30 = []
     sample_means_100 = []
     sample_means_500 = []
 
     for i in range(1000):
-        sample = df_clean.sample(30, replace=False)
+        sample = df_clean.sample(30, replace=False, random_state=rng)
         sample_mean = sample['price_per_mq'].mean()
         sample_means_30.append(sample_mean)
 
     for i in range(1000):
-        sample = df_clean.sample(100, replace=False)
+        sample = df_clean.sample(100, replace=False, random_state=rng)
         sample_mean = sample['price_per_mq'].mean()
         sample_means_100.append(sample_mean)
 
     for i in range(1000):
-        sample = df_clean.sample(500, replace=False)
+        sample = df_clean.sample(500, replace=False, random_state=rng)
         sample_mean = sample['price_per_mq'].mean()
         sample_means_500.append(sample_mean)
 
@@ -614,6 +617,9 @@ def confidence_intervals(df_clean):
     n = [30, 100, 500]
     population_mean = df_clean['price_per_mq'].mean()
 
+    # same seed at every run, but the generator advances at every draw
+    rng = np.random.default_rng(42)
+
     intervals_30 = []
     intervals_100 = []
     intervals_500 = []
@@ -622,7 +628,7 @@ def confidence_intervals(df_clean):
         t_critical = stats.t.ppf(1 - alpha / 2, df=sample_size - 1)
 
         for i in range(1000):
-            sample = df_clean.sample(sample_size, replace=False)
+            sample = df_clean.sample(sample_size, replace=False, random_state=rng)
             sample_mean = sample['price_per_mq'].mean()
             sample_std = sample['price_per_mq'].std()
 
