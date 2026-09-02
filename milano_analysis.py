@@ -1458,7 +1458,66 @@ def multiple_regression_phase(df_clean):
     model_comparison(regression_data, model)
     print('\n')
 
-    return model
+    return regression_data, model
+
+
+def conclusions_table(model):
+
+    confidence_intervals = model.conf_int()
+
+    conclusions = pd.DataFrame(
+        {
+            'coefficient': model.params,
+            'CI lower': confidence_intervals[0],
+            'CI upper': confidence_intervals[1],
+            'p-value': model.pvalues,
+        }
+    )
+    conclusions = conclusions[~conclusions.index.str.contains('macrozone')]
+    conclusions = conclusions.drop('Intercept')
+    conclusions['significant'] = conclusions['p-value'] < 0.05
+
+    print('PREDICTORS WITH 95% CONFIDENCE INTERVALS')
+    print(conclusions.round(4).to_string())
+
+    return conclusions
+
+
+def zone_variance_share(regression_data, model):
+
+    formula = (
+        'log_price ~ log_surface + rooms + bathrooms + condition_numeric'
+        ' + elevator + floor + C(heating) + luxury'
+    )
+
+    without_zone = sm.formula.ols(formula, data=regression_data).fit()
+
+    print('VARIANCE EXPLAINED BY ZONE')
+    print('Adjusted R-squared without zone:', without_zone.rsquared_adj)
+    print('Adjusted R-squared with zone:', model.rsquared_adj)
+    print('Difference:', model.rsquared_adj - without_zone.rsquared_adj)
+
+
+def conclusions_phase(regression_data, model):
+
+    print('\n')
+    print('PHASE 9 - STATISTICAL CONCLUSIONS')
+    print('\n')
+
+    conclusions = conclusions_table(model)
+    print('\n')
+
+    significant = conclusions[conclusions['significant']]
+    not_significant = conclusions[~conclusions['significant']]
+
+    print('Significant predictors:', list(significant.index))
+    print('Not significant predictors:', list(not_significant.index))
+    print('\n')
+
+    zone_variance_share(regression_data, model)
+    print('\n')
+
+    return conclusions
 
 
 # main program
@@ -1488,4 +1547,7 @@ correlation_phase(df_clean)
 linear_regression_phase(df_clean)
 
 # PHASE 8 - MULTIPLE LINEAR REGRESSION
-multiple_regression_phase(df_clean)
+regression_data, model = multiple_regression_phase(df_clean)
+
+# PHASE 9 - STATISTICAL CONCLUSIONS
+conclusions_phase(regression_data, model)
