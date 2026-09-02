@@ -525,12 +525,73 @@ def draw_sample(df_clean):
 
     return se_df
 
+def confidence_intervals(df_clean):
+
+    confidence_level = 0.95
+    alpha = 0.05
+    n = [30, 100, 500]
+    population_mean = df_clean['price_per_mq'].mean()
+
+    intervals_30 = []
+    intervals_100 = []
+    intervals_500 = []
+
+    for sample_size in n:
+        t_critical = stats.t.ppf(1 - alpha/2, df = sample_size-1)
+
+        for i in range(1000):
+            sample = df_clean.sample(sample_size, replace=False)
+            sample_mean = sample['price_per_mq'].mean()
+            sample_std = sample['price_per_mq'].std()
+
+            margin_error = t_critical * (sample_std / np.sqrt(sample_size))
+            lower = sample_mean - margin_error
+            upper = sample_mean + margin_error
+
+            if sample_size == 30:
+                intervals_30.append((lower, upper))
+
+            elif sample_size == 100:
+                intervals_100.append((lower, upper))
+
+            else:
+                intervals_500.append((lower, upper))
+
+    coverage_30 = 0
+    coverage_100 = 0
+    coverage_500 = 0
+
+    for lower, upper in intervals_30:
+        
+        if lower <= population_mean <= upper:
+            coverage_30 += 1
+            
+    coverage_30_percent = coverage_30 / 1000 * 100
+
+    for lower, upper in intervals_100:
+
+        if lower <= population_mean <= upper:
+            coverage_100 += 1 
+
+    coverage_100_percent = coverage_100 / 1000 * 100
+
+    for lower, upper in intervals_500:
+    
+            if lower <= population_mean <= upper:
+                coverage_500 += 1 
+    coverage_500_percent = coverage_500 / 1000 * 100
+
+    print('Coverage 30:', round(coverage_30_percent, 2), '%')
+    print('Coverage 100:', round(coverage_100_percent, 2), '%')
+    print('Coverage 500:', round(coverage_500_percent, 2), '%')
     
 
-    
+            
 
-
     
+       
+
+       
 #main program
 
 #data inspection
@@ -596,7 +657,10 @@ print('\n')
 print('PHASE 3 - SAMPLING & CONFIDENCE INTERVALS')
 print('\n')
 population_parameters(df_clean, 'price_per_mq')
+print('\n')
 draw_sample(df_clean)
+print('\n')
+confidence_intervals(df_clean)
 
 
 
