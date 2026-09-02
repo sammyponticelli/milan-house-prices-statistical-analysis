@@ -1,8 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
 #import statsmodels.api as sm
 from scipy import stats
+import statsmodels.api as sm
+from statsmodels.stats.oneway import anova_oneway
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 #load data
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
@@ -701,6 +705,228 @@ def hypothesis_testing(df_clean):
     print('95% CI:', condition_test[3])
     print("Cohen's d:", condition_test[4])
 
+def anova_analysis(df_clean):
+
+    anova_data = df_clean[['price_per_mq', 'macrozone']].dropna()
+
+    groups = [
+        group['price_per_mq'].values
+        for name, group in anova_data.groupby('macrozone')
+    ]
+
+    anova_result = stats.f_oneway(*groups)
+
+    grand_mean = anova_data['price_per_mq'].mean()
+
+    between_variation = sum(
+        len(group) * (group['price_per_mq'].mean() - grand_mean)**2
+        for name, group in anova_data.groupby('macrozone')
+    )
+
+    total_variation = sum(
+        (anova_data['price_per_mq'] - grand_mean)**2
+    )
+
+    eta_squared = between_variation / total_variation
+
+    print('ANOVA - 32 MACROZONES')
+
+    print('F-statistic:', anova_result.statistic)
+
+    print('Degrees of freedom:', len(groups) - 1,
+          ',', len(anova_data) - len(groups))
+
+    print('p-value:', anova_result.pvalue)
+
+    print('Eta squared:', eta_squared)
+
+    return anova_result, eta_squared
+
+def welch_anova(df_clean):
+
+    anova_data = df_clean[['price_per_mq', 'macrozone']].dropna()
+
+    groups = [
+        group['price_per_mq'].values
+        for name, group in anova_data.groupby('macrozone')
+    ]
+
+    levene_result = stats.levene(*groups)
+
+    welch_result = anova_oneway(
+        anova_data['price_per_mq'],
+        groups=anova_data['macrozone'],
+        use_var='unequal'
+    )
+
+    print('ASSUMPTION CHECK')
+
+    print('Levene:', levene_result)
+
+    print('\n')
+
+    print('WELCH ANOVA')
+
+    print('F-statistic:', welch_result.statistic)
+
+    print('Degrees of freedom:', welch_result.df)
+
+    print('p-value:', welch_result.pvalue)
+
+    return levene_result, welch_result
+
+def residual_diagnostics(df_clean):
+
+    residual_data = df_clean[['price_per_mq', 'macrozone']].dropna()
+
+    model = sm.formula.ols(
+        'price_per_mq ~ C(macrozone)',
+        data=residual_data
+    ).fit()
+
+    fitted_values = model.fittedvalues
+    residuals = model.resid
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    axes[0].scatter(fitted_values, residuals)
+
+    axes[0].axhline(0, linestyle='--')
+
+    axes[0].set_title('Residuals vs Fitted')
+
+    axes[0].set_xlabel('Fitted Values')
+
+    axes[0].set_ylabel('Residuals')
+
+    stats.probplot(
+        residuals,
+        dist='norm',
+        plot=axes[1]
+    )
+
+    axes[1].set_title('Q-Q Plot of Residuals')
+
+    plt.tight_layout()
+
+    plt.savefig('charts/anova_residuals.png', dpi=150)
+
+    plt.show()
+
+    return model
+
+def tukey_posthoc(df_clean):
+
+    tukey_data = df_clean[['price_per_mq', 'macrozone']].dropna()
+
+    tukey_result = pairwise_tukeyhsd(
+        endog=tukey_data['price_per_mq'],
+        groups=tukey_data['macrozone'],
+        alpha=0.05
+    )
+
+    tukey_table = pd.DataFrame(
+        data=tukey_result._results_table.data[1:],
+        columns=tukey_result._results_table.data[0]
+    )
+
+    significant_pairs = tukey_table[
+        tukey_table['reject'] == True
+    ]
+
+    print('TUKEY HSD')
+
+    print('Total comparisons:', len(tukey_table))
+
+    print('Significant comparisons:', len(significant_pairs))
+
+    print('\n')
+
+    print('Most significant pairs')
+
+    significant_pairs = significant_pairs.copy()
+
+    significant_pairs['abs_meandiff'] = (
+        significant_pairs['meandiff'].abs()
+    )
+
+    significant_pairs = significant_pairs.sort_values(
+        'abs_meandiff',
+        ascending=False
+    )
+
+    print(
+        significant_pairs[
+            ['group1', 'group2', 'meandiff', 'p-adj', 'reject']
+        ].head(10)
+    )
+
+    return tukey_result, significant_pairs
+
+def plot_macrozone_boxplots(df_clean):
+
+    boxplot_data = df_clean[['price_per_mq', 'macrozone']].dropna()
+
+    macrozone_order = (
+        boxplot_data
+        .groupby('macrozone')['price_per_mq']
+        .median()
+        .sort_values()
+        .index
+    )
+
+    data = [
+        boxplot_data[
+            boxplot_data['macrozone'] == macrozone
+        ]['price_per_mq']
+        for macrozone in macrozone_order
+    ]
+
+    plt.figure(figsize=(16, 8))
+
+    plt.boxplot(
+    data,
+    tick_labels=macrozone_order
+)
+
+    plt.title('Price per m² by Macrozone')
+
+    plt.xlabel('Macrozone')
+
+    plt.ylabel('Price per m² (€ / m²)')
+
+    plt.xticks(rotation=90)
+
+    plt.tight_layout()
+
+    plt.savefig('charts/macrozone_boxplots.png', dpi=150)
+
+    plt.show()
+
+def anova_phase(df_clean):
+
+    print('PHASE 5 - ANOVA')
+
+    print('\n')
+
+    anova_analysis(df_clean)
+
+    print('\n')
+
+    welch_anova(df_clean)
+
+    print('\n')
+
+    residual_diagnostics(df_clean)
+
+    print('\n')
+
+    tukey_posthoc(df_clean)
+
+    print('\n')
+
+    plot_macrozone_boxplots(df_clean)
+
 
 
    
@@ -796,6 +1022,11 @@ print('\n')
 print('PHASE 4 - HYPOTHESIS TESTING')
 print('\n')
 hypothesis_testing(df_clean)
+print('\n')
+
+# PHASE 5 - ANOVA
+print('\n')
+anova_phase(df_clean)
 print('\n')
 
 
