@@ -286,19 +286,43 @@ E l'**ampiezza delle scatole cresce con la mediana**: l'IQR di `Bisceglie` sta d
 
 ### Phase 6 — Correlation
 
-Relazioni bivariate con `price`:
+**Fase completata.** Relazioni bivariate con `price`, ciascuna misurata **due volte**. Quattro funzioni sotto `correlation_phase`: `prepare_correlation_data` (codifica `condition` in scala ordinale 1-4), `correlation_analysis` (Pearson e Spearman con i rispettivi p-value), `correlation_matrix` (heatmap seaborn su tutte le coppie), `pearson_spearman_comparison` (grafico a barre affiancate).
 
-| Relazione | Nota |
-|---|---|
-| `surface_mq` ↔ `price` | la principale |
-| `rooms` ↔ `price` | fortemente collineare con la superficie |
-| `bathrooms` ↔ `price` | idem |
-| `condition` ↔ `price` | ordinale (`Da ristrutturare` < `Buono / Abitabile` < `Ottimo / Ristrutturato` < `Nuovo / In costruzione`) → Spearman |
-| `floor` ↔ `price` | secondaria |
+| variabile | Pearson | Spearman | scarto | n |
+|---|---|---|---|---|
+| `surface_mq` | **0,789** | 0,763 | −0,026 | 16.346 |
+| `bathrooms` | 0,623 | 0,646 | +0,023 | 15.502 |
+| `rooms` | 0,547 | **0,646** | **+0,100** | 16.240 |
+| `floor` | 0,136 | 0,167 | +0,031 | 15.802 |
+| `condition_numeric` | **0,051** | 0,115 | +0,064 | 15.759 |
 
-**Si riportano sia Pearson sia Spearman.** Con variabili così asimmetriche Pearson viene tirato dai valori estremi, mentre Spearman usa solo i ranghi; quando i due divergono, la divergenza è essa stessa il risultato. Una matrice di correlazione / heatmap copre tutte le coppie in un colpo solo — comprese le correlazioni fra predittori, dove il problema di multicollinearità della fase 8 diventa visibile per la prima volta.
+Tutti i coefficienti sono significativi (p < 10⁻¹⁰; per le prime tre il p-value va in underflow e viene stampato come 0.0) — con n ≈ 16.000 la significatività non distingue nulla, come già nella fase 4. Quello che distingue è la magnitudine, e soprattutto **lo scarto fra le due colonne**.
 
-**Correlazione ≠ causalità**, e il progetto ha un esempio concreto invece di uno slogan: `bathrooms` correla con `price`, ma aggiungere un secondo bagno a un appartamento a Quarto Oggiaro non lo avvicina a Brera. Il numero di bagni è un *indicatore* di immobili grandi, centrali e costosi. Il confondente è la dimensione e, soprattutto, la **posizione** — ed è esattamente il motivo per cui la fase 8 controlla per la zona.
+**Dove Pearson e Spearman divergono, e perché**
+
+`rooms` è il caso interessante: **0,547 contro 0,646**, dieci punti di differenza. La causa è nel dato, non nella statistica — `rooms` è troncata in alto, il `5+` della sorgente è stato mappato a 5, quindi un attico da dieci locali e un quadrilocale grande sono lo stesso valore. Pearson, che lavora sui valori, viene penalizzato da questo tetto artificiale e dalle code del prezzo; Spearman, che lavora sui ranghi, ne risente molto meno. La relazione vera fra numero di locali e prezzo è più forte di quanto Pearson dichiari, e il modo di accorgersene è calcolarli entrambi.
+
+`surface_mq` va nella direzione opposta — **0,789 contro 0,763**, l'unico caso in cui Pearson supera Spearman. La relazione prezzo-superficie è genuinamente quasi lineare sui valori, e i grandi immobili di lusso, che stanno in coda su entrambe le variabili, rafforzano Pearson mentre in graduatoria contano quanto qualsiasi altra osservazione. È la conferma bivariata di quanto la fase 7 modellerà.
+
+**`condition` è il risultato negativo della fase**, ed è più informativo di molti positivi: **Pearson 0,051**, cioè una correlazione praticamente nulla fra stato di conservazione e prezzo. Non significa che ristrutturare non paghi — significa che la scala ordinale 1-4 non cattura la relazione. Nel dataset gli immobili `Da ristrutturare` sono sistematicamente **più grandi** (107,6 m² di media contro 90,9 m² degli `Ottimo / Ristrutturato`) e concentrati nei quartieri storici: la penalizzazione per lo stato e il premio per dimensione e posizione si elidono a vicenda, e sul prezzo totale non resta quasi niente. La fase 4, che confrontava `Da ristrutturare` con `Ottimo / Ristrutturato` sul prezzo **al m²**, aveva trovato una differenza netta (984 €/m², d = −0,37). Stessa variabile, due misure diverse, due risposte opposte: è un caso da manuale del perché la variabile dipendente vada scelta prima di interpretare il coefficiente.
+
+**Multicollinearità, in anticipo sulla fase 8**
+
+La heatmap (`charts/correlation_matrix.png`) copre tutte le coppie, e il blocco che conta non è la riga del prezzo ma il triangolo fra i predittori:
+
+| | `surface_mq` | `rooms` | `bathrooms` |
+|---|---|---|---|
+| `surface_mq` | 1 | **0,751** | **0,726** |
+| `rooms` | 0,751 | 1 | **0,710** |
+| `bathrooms` | 0,726 | 0,710 | 1 |
+
+Tre variabili correlate fra loro fra 0,71 e 0,75: stanno misurando in gran parte la stessa cosa — quanto è grande l'immobile. È il problema di multicollinearità della fase 8 che diventa visibile per la prima volta, e il motivo per cui quella fase calcola i VIF invece di infilare tutte e tre nel modello e fidarsi. Da notare anche che `rooms` correla con `surface_mq` (0,751) **più forte** di quanto correli con `price` (0,547): il numero di locali dice più sulla metratura che sul prezzo.
+
+`condition_numeric` e `floor` sono invece scorrelate da tutto il resto (|r| ≤ 0,14), il che le rende innocue nel modello multiplo — non spiegano molto, ma non disturbano nessuno.
+
+**Grafici.** `charts/correlation_matrix.png` — heatmap annotata, palette divergente centrata sullo zero, così il blocco caldo dei predittori dimensionali si stacca a colpo d'occhio dalla fascia neutra di `condition` e `floor`. `charts/pearson_spearman_comparison.png` — barre affiancate delle due misure per variabile, dove il divario di `rooms` è di gran lunga il più evidente — ed è anche il grafico che mostra come `rooms` e `bathrooms`, distanti su Pearson, arrivino alla stessa identica correlazione di rango (0,646).
+
+**Correlazione ≠ causalità**, e il progetto ha un esempio concreto invece di uno slogan: `bathrooms` correla con `price` a 0,62, ma aggiungere un secondo bagno a un appartamento a Quarto Oggiaro non lo avvicina a Brera. Il numero di bagni è un *indicatore* di immobili grandi, centrali e costosi — e infatti correla con la superficie (0,726) quasi quanto col prezzo. Il confondente è la dimensione e, soprattutto, la **posizione**: la fase 5 ha appena stabilito che da sola spiega il 55,6% della varianza del prezzo al m². È esattamente il motivo per cui la fase 8 controlla per la zona.
 
 ### Phase 7 — Linear Regression
 
@@ -381,8 +405,8 @@ La pipeline per rigenerarlo:
 | 3. Sampling & Confidence Intervals | ✅ **completata** — CLT verificato, copertura misurata |
 | 4. Hypothesis Testing | ✅ **completata** — 4 test di Welch con effect size e IC |
 | 5. ANOVA | ✅ **completata** — η² = 0,556, Welch, Tukey, diagnostica |
-| 6. Correlation | 🟡 **prossima fase** |
-| 7. Linear Regression | ⬜ da fare |
+| 6. Correlation | ✅ **completata** — Pearson vs Spearman, heatmap, multicollinearità |
+| 7. Linear Regression | 🟡 **prossima fase** |
 | 8. Multiple Linear Regression | ⬜ da fare |
 | 9. Statistical Conclusions | ⬜ da fare |
 | 10. Mappa del prezzo medio al m² per zona | ⬜ da fare — mappa di riferimento già disponibile |
@@ -393,18 +417,18 @@ La pipeline per rigenerarlo:
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-5
+├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-6
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
 ├── milano-heatmap.html                 # mappa per zona — output della fase 10
-├── charts/                             # figure delle fasi 1-5 in PNG (8 file)
+├── charts/                             # figure delle fasi 1-6 in PNG (10 file)
 ├── REPORT.md                           # resoconto dei risultati — da scrivere
 └── README.md
 ```
 
 Dataset, geometrie e mappa sono già nella cartella: lo script di analisi può usare percorsi relativi.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) e `anova_residuals.png` + `macrozone_boxplots.png` (fase 5); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) e `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
 
 La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
 
@@ -449,13 +473,19 @@ welch_anova               → Levene su 32 gruppi + ANOVA di Welch
 residual_diagnostics      → OLS price_per_mq ~ C(macrozone), residui e Q-Q plot
 tukey_posthoc             → Tukey HSD su 496 coppie, significative ordinate per scarto
 plot_macrozone_boxplots   → box plot delle 32 zone ordinate per mediana
+
+# fase 6 — orchestrate da correlation_phase
+prepare_correlation_data  → condition → scala ordinale 1-4 (condition_numeric)
+correlation_analysis      → Pearson e Spearman con price, variabile per variabile
+correlation_matrix        → matrice 6 × 6 + heatmap seaborn
+pearson_spearman_comparison → barre affiancate delle due misure
 ```
 
 Ogni trasformazione è preceduta dalla sua ispezione: si guarda com'è fatta la colonna, poi la si tocca. È il motivo per cui il passaggio 2 e il passaggio 3 sono risultati in gran parte a vuoto senza che ce ne accorgessimo troppo tardi.
 
 ### Strumenti
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso dalla fase 5 con `statsmodels.api`, `anova_oneway` e `pairwise_tukeyhsd` — e `matplotlib` per i grafici.
+`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso dalla fase 5 con `statsmodels.api`, `anova_oneway` e `pairwise_tukeyhsd` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6.
 
 **Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
 
