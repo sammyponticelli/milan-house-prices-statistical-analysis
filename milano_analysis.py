@@ -6,6 +6,7 @@ import statsmodels.api as sm
 from statsmodels.stats.oneway import anova_oneway
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import seaborn as sns
+from statsmodels.stats.diagnostic import het_breuschpagan
 
 
 #load data
@@ -1141,6 +1142,409 @@ def correlation_phase(df_clean):
 
     pearson_spearman_comparison(df_clean)
 
+
+def linear_regression(df_clean):
+
+    regression_data = df_clean[
+        ['price', 'surface_mq']
+    ].dropna()
+
+    X = regression_data['surface_mq']
+
+    X = sm.add_constant(X)
+
+    y = regression_data['price']
+
+    model = sm.OLS(
+        y,
+        X
+    ).fit()
+
+    print('LINEAR REGRESSION')
+
+    print('\n')
+
+    print('Intercept:', model.params['const'])
+
+    print('Surface coefficient:', model.params['surface_mq'])
+
+    print('R-squared:', model.rsquared)
+
+    print('Adjusted R-squared:', model.rsquared_adj)
+
+    print('t-statistic:', model.tvalues['surface_mq'])
+
+    print('p-value:', model.pvalues['surface_mq'])
+
+    print('95% confidence interval:')
+
+    print(
+        model.conf_int().loc['surface_mq']
+    )
+
+    return model
+
+def plot_linear_regression(df_clean, model):
+
+    regression_data = df_clean[
+        ['price', 'surface_mq']
+    ].dropna()
+
+    x = regression_data['surface_mq']
+
+    y = regression_data['price']
+
+    predicted = model.predict(
+        sm.add_constant(x)
+    )
+
+    plt.figure(figsize=(10, 6))
+
+    plt.scatter(
+        x,
+        y,
+        alpha=0.3
+    )
+
+    plt.plot(
+        x,
+        predicted,
+        color='red'
+    )
+
+    plt.title('Linear Regression: Price vs Surface')
+
+    plt.xlabel('Surface (m²)')
+
+    plt.ylabel('Price (€)')
+
+    plt.tight_layout()
+
+    plt.savefig(
+        'charts/linear_regression.png',
+        dpi=150
+    )
+
+    plt.show()
+
+def linear_residual_diagnostics(model):
+
+    fitted_values = model.fittedvalues
+
+    residuals = model.resid
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 5)
+    )
+
+    axes[0].scatter(
+        fitted_values,
+        residuals,
+        alpha=0.3
+    )
+
+    axes[0].axhline(
+        0,
+        linestyle='--'
+    )
+
+    axes[0].set_title(
+        'Residuals vs Fitted'
+    )
+
+    axes[0].set_xlabel(
+        'Fitted Values'
+    )
+
+    axes[0].set_ylabel(
+        'Residuals'
+    )
+
+    stats.probplot(
+        residuals,
+        dist='norm',
+        plot=axes[1]
+    )
+
+    axes[1].set_title(
+        'Q-Q Plot of Residuals'
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        'charts/linear_regression_residuals.png',
+        dpi=150
+    )
+
+    plt.show()
+
+    return residuals
+
+def breusch_pagan_test(model):
+
+    residuals = model.resid
+
+    exog = model.model.exog
+
+    bp_test = het_breuschpagan(
+        residuals,
+        exog
+    )
+
+    labels = [
+        'LM statistic',
+        'LM p-value',
+        'F statistic',
+        'F p-value'
+    ]
+
+    results = dict(
+        zip(
+            labels,
+            bp_test
+        )
+    )
+
+    print('\n')
+
+    print('BREUSCH-PAGAN TEST')
+
+    print('LM statistic:', results['LM statistic'])
+
+    print('LM p-value:', results['LM p-value'])
+
+    print('F statistic:', results['F statistic'])
+
+    print('F p-value:', results['F p-value'])
+
+    return results
+
+def log_linear_regression(df_clean):
+
+    regression_data = df_clean[
+        ['price', 'surface_mq']
+    ].dropna()
+
+    regression_data = regression_data[
+        (regression_data['price'] > 0) &
+        (regression_data['surface_mq'] > 0)
+    ].copy()
+
+    regression_data['log_price'] = np.log(
+        regression_data['price']
+    )
+
+    regression_data['log_surface'] = np.log(
+        regression_data['surface_mq']
+    )
+
+    X = regression_data['log_surface']
+
+    X = sm.add_constant(X)
+
+    y = regression_data['log_price']
+
+    model = sm.OLS(
+        y,
+        X
+    ).fit()
+
+    print('\n')
+
+    print('LOG-LOG LINEAR REGRESSION')
+
+    print('\n')
+
+    print('Intercept:', model.params['const'])
+
+    print(
+        'Log surface coefficient:',
+        model.params['log_surface']
+    )
+
+    print('R-squared:', model.rsquared)
+
+    print(
+        'Adjusted R-squared:',
+        model.rsquared_adj
+    )
+
+    print(
+        't-statistic:',
+        model.tvalues['log_surface']
+    )
+
+    print(
+        'p-value:',
+        model.pvalues['log_surface']
+    )
+
+    print('95% confidence interval:')
+
+    print(
+        model.conf_int().loc['log_surface']
+    )
+
+    return model
+
+def log_residual_diagnostics(model):
+
+    fitted_values = model.fittedvalues
+
+    residuals = model.resid
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 5)
+    )
+
+    axes[0].scatter(
+        fitted_values,
+        residuals,
+        alpha=0.3
+    )
+
+    axes[0].axhline(
+        0,
+        linestyle='--'
+    )
+
+    axes[0].set_title(
+        'Log-Log Residuals vs Fitted'
+    )
+
+    axes[0].set_xlabel(
+        'Fitted Log Price'
+    )
+
+    axes[0].set_ylabel(
+        'Residuals'
+    )
+
+    stats.probplot(
+        residuals,
+        dist='norm',
+        plot=axes[1]
+    )
+
+    axes[1].set_title(
+        'Q-Q Plot of Log-Log Residuals'
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        'charts/log_linear_regression_residuals.png',
+        dpi=150
+    )
+
+    plt.show()
+
+def log_breusch_pagan_test(model):
+
+    residuals = model.resid
+
+    exog = model.model.exog
+
+    bp_test = het_breuschpagan(
+        residuals,
+        exog
+    )
+
+    labels = [
+        'LM statistic',
+        'LM p-value',
+        'F statistic',
+        'F p-value'
+    ]
+
+    results = dict(
+        zip(
+            labels,
+            bp_test
+        )
+    )
+
+    print('\n')
+
+    print('BREUSCH-PAGAN TEST - LOG-LOG')
+
+    print(
+        'LM statistic:',
+        results['LM statistic']
+    )
+
+    print(
+        'LM p-value:',
+        results['LM p-value']
+    )
+
+    print(
+        'F statistic:',
+        results['F statistic']
+    )
+
+    print(
+        'F p-value:',
+        results['F p-value']
+    )
+
+    return results
+
+def linear_regression_phase(df_clean):
+
+    print('PHASE 7 - LINEAR REGRESSION')
+
+    print('\n')
+
+    linear_model = linear_regression(
+        df_clean
+    )
+
+    print('\n')
+
+    plot_linear_regression(
+        df_clean,
+        linear_model
+    )
+
+    print('\n')
+
+    linear_residual_diagnostics(
+        linear_model
+    )
+
+    print('\n')
+
+    breusch_pagan_test(
+        linear_model
+    )
+
+    print('\n')
+
+    log_model = log_linear_regression(
+        df_clean
+    )
+
+    print('\n')
+
+    log_residual_diagnostics(
+        log_model
+    )
+
+    print('\n')
+
+    log_breusch_pagan_test(
+        log_model
+    )
+
+    return linear_model, log_model
+
+
    
 
 
@@ -1245,6 +1649,12 @@ print('\n')
 
 print('\n')
 correlation_phase(df_clean)
+print('\n')
+
+# PHASE 7 - LINEAR REGRESSION
+
+print('\n')
+linear_regression_phase(df_clean)
 print('\n')
 
 
