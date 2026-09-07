@@ -1528,9 +1528,12 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Milano — prezzo al m² per zona</title>
 <style>
+  /* one dark ground for both views: white block edges are what separates one
+     zone from the next, and on a light ground they were invisible */
   :root{
-    --bg:#f4f4f1; --panel:#fbfbfa; --ink:#15181c; --ink-2:#5c6169;
-    --ink-3:#8b9099; --line:#dedfd9; --accent:#eb6834;
+    --bg:#111311; --panel:#1a1c1a; --panel-2:#232622; --ink:#f2f3ef;
+    --ink-2:#a6aaa2; --ink-3:#7b8078; --line:#2c2f2b; --line-2:#3c403b;
+    --accent:#f0783f;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;overflow:hidden}
@@ -1538,7 +1541,7 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
        font:14px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
   #map{position:absolute;inset:0}
   .card{position:absolute;background:var(--panel);border:1px solid var(--line);
-        border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.07);z-index:2}
+        border-radius:9px;box-shadow:0 2px 10px rgba(0,0,0,.45);z-index:2}
   /* a single panel: two separate cards could overlap on short viewports */
   #panel{top:20px;left:20px;width:328px;padding:15px 17px;
          max-height:calc(100vh - 40px);overflow-y:auto}
@@ -1554,19 +1557,35 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
   .lg-r{display:flex;align-items:center;gap:10px;padding:2px 0;
         font-size:12.5px;font-variant-numeric:tabular-nums}
   .sw{width:15px;height:15px;border-radius:3px;flex:none;
-      border:1px solid rgba(0,0,0,.14)}
+      border:1px solid var(--line-2)}
   .note{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink-2)}
   .btn{width:100%;padding:8px 12px;font:inherit;font-size:12.5px;
-       color:var(--ink);background:var(--bg);border:1px solid var(--line);
+       color:var(--ink);background:var(--panel-2);border:1px solid var(--line);
        border-radius:7px;cursor:pointer}
-  .btn:hover{border-color:#c9cbc3}
+  .btn:hover{border-color:var(--line-2)}
   .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);
                             color:#fff}
-  #compass{right:20px;bottom:20px;width:76px;padding:9px 8px 7px;
+  .switch{display:flex;gap:6px}
+  .switch .btn{padding:7px 8px;font-size:12px}
+  .list{max-height:232px;overflow-y:auto;margin:0 -6px 0 0;padding-right:6px}
+  .zr{display:grid;grid-template-columns:15px 1fr auto;gap:9px;align-items:center;
+      width:100%;padding:4px 3px;border:0;border-radius:5px;background:none;
+      font:inherit;font-size:12.5px;text-align:left;cursor:pointer;color:var(--ink)}
+  .zr:hover{background:var(--panel-2)}
+  .zr[aria-current="true"]{background:var(--panel-2);
+                           box-shadow:inset 2px 0 0 var(--accent)}
+  .zr .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zr .v{color:var(--ink-2);font-variant-numeric:tabular-nums}
+  #compass{right:20px;bottom:20px;width:86px;padding:9px 8px 7px;
            border:1px solid var(--line);cursor:pointer;font:inherit;
            background:var(--panel)}
-  #compass:hover{border-color:#c9cbc3}
-  #compass svg{width:50px;height:50px;display:block;margin:0 auto}
+  #compass:hover{border-color:var(--line-2)}
+  #compass svg{width:62px;height:62px;display:block;margin:0 auto}
+  #compass circle{stroke:var(--line-2)}
+  .n-half,.n-lab{fill:var(--accent)}
+  .s-half{fill:var(--ink-3)}
+  .rose-lab{fill:var(--ink-2)}
+  #spin-sec[hidden]{display:none}
   #compass .deg{margin-top:4px;font-size:11px;color:var(--ink-2);
                 text-align:center;font-variant-numeric:tabular-nums}
   @media(max-width:820px){
@@ -1595,12 +1614,41 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
   </div>
 
   <div class="sec">
-    <div class="lab">Colore — superficie media m²</div>
+    <div class="lab">Vista</div>
+    <div class="switch">
+      <button class="btn" type="button" data-view="3d" aria-pressed="true">
+        3D</button>
+      <button class="btn" type="button" data-view="2d" aria-pressed="false">
+        2D piatta</button>
+    </div>
+    <p class="note" id="view-note"></p>
+  </div>
+
+  <div class="sec">
+    <div class="lab" id="mode-lab"></div>
+    <div class="switch">
+      <button class="btn" type="button" data-mode="avg" aria-pressed="true">
+        Prezzo medio</button>
+      <button class="btn" type="button" data-mode="premium" aria-pressed="false">
+        Appartamento tipo</button>
+    </div>
+    <p class="note" id="mode-note"></p>
+  </div>
+
+  <div class="sec">
+    <div class="lab" id="lg-lab"></div>
     <div id="lg-rows"></div>
     <p class="note" id="lg-note"></p>
   </div>
 
   <div class="sec">
+    <div class="lab" id="list-lab"></div>
+    <div id="zone-list" class="list"></div>
+    <p class="note">Clicca una zona qui o direttamente sulla mappa. Clicca
+       fuori dalle zone, o premi Esc, per tornare alla vista d'insieme.</p>
+  </div>
+
+  <div class="sec" id="spin-sec">
     <button id="spin" class="btn" type="button" aria-pressed="false">Ruota 360°</button>
     <p class="note">Trascina per ruotare a mano, rotella per lo zoom, passa sopra
        una zona per i dettagli. La bussola in basso a destra riporta il nord
@@ -1611,10 +1659,14 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 <button id="compass" class="card" type="button" title="Rimetti il nord in alto"
         aria-label="Bussola: clicca per rimettere il nord in alto">
   <svg viewBox="0 0 100 100" aria-hidden="true">
-    <circle cx="50" cy="50" r="44" fill="none" stroke="#dedfd9" stroke-width="2"/>
-    <g id="rose">
-      <polygon points="50,14 59,50 41,50" fill="#eb6834"/>
-      <polygon points="50,86 59,50 41,50" fill="#b9bcb4"/>
+    <circle cx="50" cy="50" r="47" fill="none" stroke-width="2"/>
+    <g id="rose" font-size="17" text-anchor="middle" dominant-baseline="central">
+      <polygon points="50,26 57,50 43,50" class="n-half"/>
+      <polygon points="50,74 57,50 43,50" class="s-half"/>
+      <text x="50" y="11" class="n-lab" font-weight="600">N</text>
+      <text x="89" y="50" class="rose-lab">E</text>
+      <text x="50" y="89" class="rose-lab">S</text>
+      <text x="11" y="50" class="rose-lab">O</text>
     </g>
   </svg>
   <div class="deg" id="cp-deg"></div>
@@ -1627,26 +1679,101 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 var D = JSON.parse(document.getElementById('Z').textContent);
 var M = JSON.parse(document.getElementById('M').textContent);
 
-var COLORS = [
-  [242, 177, 132],
-  [229, 133, 78],
-  [207, 98, 36],
-  [164, 71, 24],
-  [111, 51, 15]
+// sequential single hue, darker as the value grows. The orange is stepped for
+// the dark ground of the 3D view, where #a05520 is as dark as a class can get
+// before it sinks into the background; the blue is stepped for the light
+// ground of the flat view.
+var SURFACE = [
+  [248, 202, 151],
+  [237, 168, 98],
+  [221, 134, 54],
+  [194, 106, 36],
+  [160, 85, 32]
 ];
-var NODATA = [214, 215, 209];
+var PRICE = [
+  [205, 226, 251],
+  [158, 197, 244],
+  [109, 167, 236],
+  [57, 135, 229],
+  [37, 106, 191]
+];
+var NODATA = [74, 77, 71];
 
 function fmt(value) {
   return value == null ? 'n.d.' : value.toLocaleString('it-IT');
 }
 
-function fill(feature) {
-  var cls = feature.properties.cls;
-  return cls == null ? NODATA : COLORS[cls];
+// 'avg' is the price actually asked in the zone, 'premium' the price of one
+// identical flat priced in every zone — the second isolates the location
+var mode = 'avg';
+var view = '3d';
+var selected = null;
+
+function height(properties) {
+  return mode === 'avg' ? properties.avg : properties.premium;
 }
 
+function outline(feature) {
+  return feature.properties.id_nil === selected
+    ? [240, 120, 63]
+    : [255, 255, 255, 190];
+}
+
+function classOf(value, breaks) {
+  var index = 0;
+
+  while (index < breaks.length && value >= breaks[index]) {
+    index += 1;
+  }
+
+  return index;
+}
+
+// in 3D the colour is the mean surface, because the height already carries the
+// price. Flat there is no height left, so the colour takes the price over.
+function ramp() {
+  return view === '3d' ? SURFACE : PRICE;
+}
+
+function breaks() {
+  return view === '3d' ? M.breaks.surface : M.breaks[mode];
+}
+
+function baseColor(properties) {
+  if (view === '3d') {
+    return properties.cls == null ? NODATA : SURFACE[properties.cls];
+  }
+
+  var value = height(properties);
+
+  return value == null ? NODATA : PRICE[classOf(value, M.breaks[mode])];
+}
+
+// everything but the selected zone fades back, so the selected one reads
+// even through the blocks standing in front of it
+function fill(feature) {
+  var properties = feature.properties;
+  var base = baseColor(properties);
+
+  if (selected == null || properties.id_nil === selected) {
+    return base;
+  }
+
+  return [base[0], base[1], base[2], 105];
+}
+
+// focus: with a zone selected the others drop to a third of their height, so
+// nothing can stand in front of it whatever the angle. It is a temporary view
+// state, and the selected zone keeps its true height.
 function elevation(feature) {
-  return feature.properties.avg || 0;
+  var properties = feature.properties;
+  var tall = height(properties) || 0;
+
+  if (selected != null && properties.id_nil !== selected) {
+    return tall * 0.33;
+  }
+
+  return tall;
 }
 
 function tooltip(info) {
@@ -1660,20 +1787,22 @@ function tooltip(info) {
   if (p.avg == null) {
     body =
       '<div style="font-size:16px">dati insufficienti</div>' +
-      '<div style="color:#5c6169;font-size:12px;margin-top:3px">' +
+      '<div style="color:#a6aaa2;font-size:12px;margin-top:3px">' +
       p.n + ' annunci</div>';
   } else {
     body =
       '<div style="font-size:19px;letter-spacing:-.3px">' +
-      fmt(p.avg) + ' €/m² <span style="font-size:12px;color:#5c6169">medi' +
+      fmt(p.avg) + ' €/m² <span style="font-size:12px;color:#a6aaa2">medi' +
       '</span></div>' +
       '<div style="font-size:19px;letter-spacing:-.3px">' +
-      fmt(p.surface_avg) + ' m² <span style="font-size:12px;color:#5c6169">' +
+      fmt(p.surface_avg) + ' m² <span style="font-size:12px;color:#a6aaa2">' +
       'medi</span></div>' +
-      '<div style="color:#5c6169;font-size:12px;margin-top:5px">' +
+      '<div style="color:#a6aaa2;font-size:12px;margin-top:5px">' +
+      'appartamento tipo ' + fmt(p.premium) + ' €/m²</div>' +
+      '<div style="color:#a6aaa2;font-size:12px">' +
       'mediana ' + fmt(p.med) + ' €/m² · p25–p75 ' +
       fmt(p.p25) + '–' + fmt(p.p75) + '</div>' +
-      '<div style="color:#5c6169;font-size:12px">' +
+      '<div style="color:#a6aaa2;font-size:12px">' +
       p.n + ' annunci · prezzo mediano ' + fmt(p.mp) + ' € · ' +
       'superficie mediana ' + fmt(p.surface_med) + ' m²</div>';
   }
@@ -1682,32 +1811,85 @@ function tooltip(info) {
     html: '<div style="font-weight:600;margin-bottom:4px">' + p.nome +
           '</div>' + body,
     style: {
-      background: '#fbfbfa',
-      color: '#15181c',
-      border: '1px solid #dedfd9',
+      background: '#1a1c1a',
+      color: '#f2f3ef',
+      border: '1px solid #3c403b',
       borderRadius: '8px',
       padding: '11px 13px',
-      boxShadow: '0 2px 10px rgba(0,0,0,.12)',
+      boxShadow: '0 4px 16px rgba(0,0,0,.5)',
       font: '13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif',
       maxWidth: '280px'
     }
   };
 }
 
-var layer = new deck.GeoJsonLayer({
-  id: 'zones',
-  data: D,
-  extruded: true,
-  filled: true,
-  wireframe: true,
-  getElevation: elevation,
-  elevationScale: M.elevation_scale,
-  getFillColor: fill,
-  getLineColor: [255, 255, 255, 160],
-  pickable: true,
-  autoHighlight: true,
-  highlightColor: [240, 120, 63, 130]
-});
+function makeLayer() {
+  return new deck.GeoJsonLayer({
+    id: 'zones',
+    data: D,
+    extruded: view === '3d',
+    filled: true,
+    wireframe: true,
+    stroked: view === '2d',
+    lineWidthMinPixels: 1,
+    getElevation: elevation,
+    elevationScale: M.elevation_scale,
+    getFillColor: fill,
+    getLineColor: outline,
+    pickable: true,
+    autoHighlight: true,
+    highlightColor: [240, 120, 63, 130],
+    updateTriggers: {
+      getElevation: [mode, selected, view],
+      getLineColor: selected,
+      getFillColor: [selected, view, mode]
+    }
+  });
+}
+
+// a floating label on top of the selected block: the outline alone does not
+// say which zone one is looking at
+function makeLabel() {
+  if (selected == null) {
+    return null;
+  }
+
+  var chosen = D.features.filter(function (feature) {
+    return feature.properties.id_nil === selected;
+  });
+
+  if (!chosen.length) {
+    return null;
+  }
+
+  return new deck.TextLayer({
+    id: 'label',
+    data: [chosen[0].properties],
+    getPosition: function (p) {
+      var lift = view === '3d' ? (height(p) || 0) * M.elevation_scale : 0;
+
+      return [p.lon, p.lat, lift];
+    },
+    getText: function (p) {
+      return p.nome + ' · ' + fmt(height(p)) + ' €/m²';
+    },
+    getSize: 13,
+    getColor: [242, 243, 239],
+    getPixelOffset: [0, -16],
+    billboard: true,
+    background: true,
+    getBackgroundColor: [26, 28, 26, 240],
+    backgroundPadding: [8, 5, 8, 5],
+    getBorderColor: [240, 120, 63],
+    getBorderWidth: 1.5,
+    fontFamily: 'ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif',
+    characterSet: 'auto'
+  });
+}
+
+function refresh() {
+  deckgl.setProps({layers: [makeLayer(), makeLabel()].filter(Boolean)});
+}
 
 var rose = document.getElementById('rose');
 var degrees = document.getElementById('cp-deg');
@@ -1736,8 +1918,15 @@ var deckgl = new deck.DeckGL({
   container: document.getElementById('map'),
   viewState: viewState,
   controller: true,
-  layers: [layer],
+  layers: [makeLayer()],
   getTooltip: tooltip,
+  onClick: function (info) {
+    if (info.object) {
+      selectZone(info.object.properties);
+    } else if (selected != null) {
+      clearSelection();
+    }
+  },
   onViewStateChange: function (event) {
     var interaction = event.interactionState || {};
 
@@ -1751,41 +1940,49 @@ var deckgl = new deck.DeckGL({
 
 applyViewState(viewState);
 
-// the return to north is animated here rather than with a deck.gl transition:
+// camera moves are animated by hand rather than with a deck.gl transition:
 // the view state is controlled, and a controlled update on every frame would
 // cancel the transition halfway
-var resetting = false;
-var resetFrom = 0;
-var resetStart = 0;
+var move = null;
 
-function resetNorth(time) {
-  if (!resetting) {
+function moveStep(time) {
+  if (!move) {
     return;
   }
 
-  if (!resetStart) {
-    resetStart = time;
+  if (!move.start) {
+    move.start = time;
   }
 
-  var step = Math.min((time - resetStart) / 500, 1);
+  var step = Math.min((time - move.start) / move.duration, 1);
+  var eased = step * (2 - step);
+  var next = Object.assign({}, viewState);
 
-  applyViewState(Object.assign({}, viewState, {bearing: resetFrom * (1 - step)}));
+  for (var key in move.target) {
+    next[key] = move.from[key] + (move.target[key] - move.from[key]) * eased;
+  }
+
+  applyViewState(next);
 
   if (step < 1) {
-    requestAnimationFrame(resetNorth);
+    requestAnimationFrame(moveStep);
   } else {
-    resetting = false;
+    move = null;
   }
 }
 
-document.getElementById('compass').addEventListener('click', function () {
+function animateTo(target, duration) {
   stopSpin();
+  move = {from: viewState, target: target, duration: duration, start: 0};
+  requestAnimationFrame(moveStep);
+}
 
+document.getElementById('compass').addEventListener('click', function () {
   // shortest way round: bring the bearing back into -180..180 first
-  resetFrom = ((viewState.bearing % 360) + 540) % 360 - 180;
-  resetStart = 0;
-  resetting = true;
-  requestAnimationFrame(resetNorth);
+  var bearing = ((viewState.bearing % 360) + 540) % 360 - 180;
+
+  applyViewState(Object.assign({}, viewState, {bearing: bearing}));
+  animateTo({bearing: 0}, 500);
 });
 
 // full turn every 36 seconds, driven by elapsed time so the speed does not
@@ -1812,7 +2009,7 @@ function spin(time) {
 // stops every automatic camera motion, so the user taking over always wins
 function stopSpin() {
   spinning = false;
-  resetting = false;
+  move = null;
   lastFrame = 0;
   button.textContent = 'Ruota 360°';
   button.setAttribute('aria-pressed', 'false');
@@ -1842,30 +2039,281 @@ document.getElementById('s-zones').textContent = M.zones + ' su 88';
 document.getElementById('s-mean').textContent = fmt(M.mean) + ' €/m²';
 document.getElementById('s-surface').textContent = M.surface_mean + ' m²';
 
-var b = M.breaks;
-var labels = [
-  'fino a ' + fmt(b[0]),
-  fmt(b[0]) + ' – ' + fmt(b[1]),
-  fmt(b[1]) + ' – ' + fmt(b[2]),
-  fmt(b[2]) + ' – ' + fmt(b[3]),
-  'oltre ' + fmt(b[3])
-];
+function buildLegend() {
+  var cuts = breaks();
+  var colors = ramp();
+  var labels = [
+    'fino a ' + fmt(cuts[0]),
+    fmt(cuts[0]) + ' – ' + fmt(cuts[1]),
+    fmt(cuts[1]) + ' – ' + fmt(cuts[2]),
+    fmt(cuts[2]) + ' – ' + fmt(cuts[3]),
+    'oltre ' + fmt(cuts[3])
+  ];
 
-var rows = '';
+  var rows = '';
 
-for (var i = labels.length - 1; i >= 0; i--) {
-  rows += legendRow(COLORS[i], labels[i]);
+  for (var i = labels.length - 1; i >= 0; i--) {
+    rows += legendRow(colors[i], labels[i]);
+  }
+
+  rows += legendRow(NODATA, 'meno di ' + M.min_listings + ' annunci');
+
+  document.getElementById('lg-rows').innerHTML = rows;
+  document.getElementById('lg-lab').textContent =
+    view === '3d'
+      ? 'Colore — superficie media m²'
+      : 'Colore — ' +
+        (mode === 'avg' ? 'prezzo medio' : 'appartamento tipo') + ' €/m²';
+
+  document.getElementById('lg-note').textContent =
+    view === '3d'
+      ? 'In 3D il colore non è il prezzo: è la superficie media, perché il ' +
+        'prezzo lo porta già l\\'altezza (proporzionale a partire da zero, ' +
+        'scala ' + M.elevation_scale + ').'
+      : 'Senza altezza il colore torna a portare il prezzo. La superficie ' +
+        'media resta nel tooltip.';
 }
 
-rows += legendRow(NODATA, 'meno di ' + M.min_listings + ' annunci');
-document.getElementById('lg-rows').innerHTML = rows;
+// the ranked list is the honest counterpart of the height: in perspective the
+// blocks cannot be compared by eye, and the tall ones hide the short ones
+var list = document.getElementById('zone-list');
+var listLabel = document.getElementById('list-lab');
+var modeNote = document.getElementById('mode-note');
+var modeButtons = document.querySelectorAll('[data-mode]');
 
-document.getElementById('lg-note').textContent =
-  'Il colore non è il prezzo: è la superficie media. Il prezzo è l\\'altezza, ' +
-  'proporzionale alla media a partire da zero, scala ' + M.elevation_scale +
-  ' — la zona più cara è alta ' +
-  (M.max_height / 1000).toFixed(1).replace('.', ',') + ' km. ' +
-  'In prospettiva le altezze ingannano: i numeri esatti sono nel tooltip.';
+function buildList() {
+  var zones = D.features
+    .map(function (feature) {
+      return feature.properties;
+    })
+    .filter(function (p) {
+      return height(p) != null;
+    })
+    .sort(function (a, b) {
+      return height(b) - height(a);
+    });
+
+  var html = '';
+
+  zones.forEach(function (p, index) {
+    html +=
+      '<button class="zr" type="button" data-id="' + p.id_nil +
+      '" data-lon="' + p.lon + '" data-lat="' + p.lat + '"' +
+      (p.id_nil === selected ? ' aria-current="true"' : '') + '>' +
+      '<span class="sw" style="background:rgb(' +
+      baseColor(p).join(',') + ')"></span>' +
+      '<span class="nm">' + (index + 1) + '. ' + p.nome + '</span>' +
+      '<span class="v">' + fmt(height(p)) + '</span></button>';
+  });
+
+  list.innerHTML = html;
+  listLabel.textContent =
+    'Zone per ' + (mode === 'avg' ? 'prezzo medio' : 'appartamento tipo') +
+    ' — ' + zones.length + ' su 88';
+}
+
+// with a tilted camera the blocks between the viewer and the target hide it,
+// so the map turns to the side with the least tall mass in the way. The
+// viewer stands opposite the screen-up direction, at bearing + 180.
+function clearestBearing(lon, lat) {
+  var best = 0;
+  var bestScore = Infinity;
+
+  for (var bearing = 0; bearing < 360; bearing += 15) {
+    var angle = ((bearing + 180) * Math.PI) / 180;
+    var east = Math.sin(angle);
+    var north = Math.cos(angle);
+    var score = 0;
+
+    D.features.forEach(function (feature) {
+      var p = feature.properties;
+      var tall = height(p);
+
+      if (!tall || p.id_nil === selected) {
+        return;
+      }
+
+      // rough km: one degree of longitude is about 78 km at this latitude
+      var dx = (p.lon - lon) * 78;
+      var dy = (p.lat - lat) * 111;
+      var distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 0.25 || distance > 6) {
+        return;
+      }
+
+      var aligned = (dx * east + dy * north) / distance;
+
+      // only what stands in front can hide, and the nearer it is the worse
+      if (aligned > 0) {
+        score += (tall * Math.pow(aligned, 4)) / distance;
+      }
+    });
+
+    if (score < bestScore) {
+      bestScore = score;
+      best = bearing;
+    }
+  }
+
+  return best;
+}
+
+function markRow() {
+  var current = list.querySelector('[aria-current="true"]');
+
+  if (current) {
+    current.removeAttribute('aria-current');
+  }
+
+  if (selected == null) {
+    return;
+  }
+
+  var row = list.querySelector('[data-id="' + selected + '"]');
+
+  if (row) {
+    row.setAttribute('aria-current', 'true');
+
+    if (row.scrollIntoView) {
+      row.scrollIntoView({block: 'nearest'});
+    }
+  }
+}
+
+function selectZone(properties) {
+  selected = properties.id_nil;
+  refresh();
+  markRow();
+
+  var lon = properties.lon;
+  var lat = properties.lat;
+
+  // shortest way round to the bearing that leaves the zone in the clear
+  var wanted = view === '3d' ? clearestBearing(lon, lat) : 0;
+  var turn = (((wanted - viewState.bearing) % 360) + 540) % 360 - 180;
+
+  animateTo(
+    {
+      longitude: lon,
+      latitude: lat,
+      zoom: 12.2,
+      bearing: viewState.bearing + turn,
+      pitch: view === '3d' ? 40 : 0
+    },
+    900
+  );
+}
+
+function clearSelection() {
+  selected = null;
+  refresh();
+  markRow();
+
+  animateTo(
+    {
+      longitude: 9.19,
+      latitude: view === '3d' ? 45.44 : 45.46,
+      zoom: view === '3d' ? 10.7 : 11.2,
+      bearing: 0,
+      pitch: view === '3d' ? 50 : 0
+    },
+    800
+  );
+}
+
+function zoneById(id) {
+  var found = D.features.filter(function (feature) {
+    return feature.properties.id_nil === id;
+  });
+
+  return found.length ? found[0].properties : null;
+}
+
+list.addEventListener('click', function (event) {
+  var row = event.target.closest('.zr');
+
+  if (row) {
+    selectZone(zoneById(Number(row.dataset.id)));
+  }
+});
+
+document.addEventListener('keydown', function (event) {
+  if (event.key === 'Escape' && selected != null) {
+    clearSelection();
+  }
+});
+
+var R = M.reference;
+
+function setMode(next) {
+  mode = next;
+
+  Array.prototype.forEach.call(modeButtons, function (item) {
+    item.setAttribute('aria-pressed', String(item.dataset.mode === mode));
+  });
+
+  refresh();
+  buildList();
+  buildLegend();
+
+  document.getElementById('mode-lab').textContent =
+    view === '3d' ? 'Altezza dei blocchi' : 'Variabile mostrata';
+
+  modeNote.textContent =
+    mode === 'avg'
+      ? 'Il prezzo davvero richiesto nella zona. Comprende il fatto che in certi ' +
+        'quartieri gli appartamenti sono più grandi e più ristrutturati che altrove.'
+      : 'Quanto costerebbe lo stesso appartamento — ' + R.surface + ' m², ' +
+        R.rooms + ' locali, ' + R.bathrooms + ' bagno, ristrutturato, al piano ' +
+        R.floor + ' con ascensore — se stesse in quella zona. Isola la posizione ' +
+        'dalle caratteristiche degli immobili che ci si trovano. Stimato su ' +
+        M.premium_zones + ' zone.';
+}
+
+Array.prototype.forEach.call(modeButtons, function (item) {
+  item.addEventListener('click', function () {
+    setMode(item.dataset.mode);
+  });
+});
+
+var viewButtons = document.querySelectorAll('[data-view]');
+
+function setView(next, animate) {
+  view = next;
+
+  Array.prototype.forEach.call(viewButtons, function (item) {
+    item.setAttribute('aria-pressed', String(item.dataset.view === view));
+  });
+
+  document.getElementById('spin-sec').hidden = view === '2d';
+  document.getElementById('view-note').textContent =
+    view === '3d'
+      ? 'Due variabili insieme: altezza e colore. Bella da guardare, ma le ' +
+        'altezze in prospettiva non si confrontano a occhio.'
+      : 'Una variabile sola, letta dall\\'alto. Meno spettacolare e più ' +
+        'precisa: nessuna zona ne copre un\\'altra.';
+
+  if (animate) {
+    stopSpin();
+
+    if (view === '2d') {
+      animateTo({pitch: 0, bearing: 0, zoom: 11.2}, 700);
+    } else {
+      animateTo({pitch: 45, zoom: 10.9}, 700);
+    }
+  }
+
+  setMode(mode);
+}
+
+Array.prototype.forEach.call(viewButtons, function (item) {
+  item.addEventListener('click', function () {
+    setView(item.dataset.view, true);
+  });
+});
+
+setView('3d', false);
 </script>
 
 </body>
@@ -1933,23 +2381,98 @@ def suppress_small_zones(zone_stats, min_listings):
     return zone_stats
 
 
-def color_classes(zone_stats):
+def value_classes(values, label):
 
-    displayed = zone_stats[~zone_stats['suppressed']]
+    values = values.dropna()
 
-    quantiles = displayed['surface_avg'].quantile([0.2, 0.4, 0.6, 0.8])
+    quantiles = values.quantile([0.2, 0.4, 0.6, 0.8])
     breaks = [int(quantile) for quantile in quantiles]
 
-    print('COLOR CLASSES')
-    print('variable: mean surface in sqm')
+    print('COLOR CLASSES -', label)
     print('breaks:', breaks)
 
-    classes = np.searchsorted(breaks, displayed['surface_avg'], side='right')
+    classes = np.searchsorted(breaks, values, side='right')
 
     for index in range(5):
         print('class', index, '- zones:', (classes == index).sum())
 
     return breaks
+
+
+def location_premium(map_data, min_listings):
+
+    premium_data = prepare_correlation_data(map_data)
+
+    premium_data['log_price'] = np.log(premium_data['price'])
+    premium_data['log_surface'] = np.log(premium_data['surface_mq'])
+
+    variables = [
+        'log_price',
+        'log_surface',
+        'surface_mq',
+        'rooms',
+        'bathrooms',
+        'condition_numeric',
+        'elevator',
+        'floor',
+        'heating',
+        'luxury',
+        'nil_id',
+    ]
+
+    premium_data = premium_data[variables].dropna()
+
+    counts = premium_data.groupby('nil_id').size()
+    kept = counts[counts >= min_listings].index
+    premium_data = premium_data[premium_data['nil_id'].isin(kept)]
+
+    formula = (
+        'log_price ~ log_surface + rooms + bathrooms + condition_numeric'
+        ' + elevator + floor + C(heating) + luxury + C(nil_id)'
+    )
+
+    model = sm.formula.ols(formula, data=premium_data).fit()
+
+    # the same flat priced in every zone: the median listing of the city, so
+    # what is left is the zone and not the flats that happen to be in it
+    reference = {
+        'surface_mq': premium_data['surface_mq'].median(),
+        'rooms': premium_data['rooms'].median(),
+        'bathrooms': premium_data['bathrooms'].median(),
+        'condition_numeric': premium_data['condition_numeric'].median(),
+        'elevator': premium_data['elevator'].median(),
+        'floor': premium_data['floor'].median(),
+        'heating': premium_data['heating'].mode()[0],
+        'luxury': 0,
+    }
+
+    predictors = dict(reference)
+    predictors['log_surface'] = np.log(reference['surface_mq'])
+
+    zones = sorted(premium_data['nil_id'].unique())
+    grid = pd.DataFrame([dict(predictors, nil_id=zone) for zone in zones])
+
+    # exp of a log-linear prediction estimates the median, not the mean
+    premium = np.exp(model.predict(grid)) / reference['surface_mq']
+    premium = pd.Series(premium.values, index=[int(zone) for zone in zones])
+    premium = premium.round(0).astype(int)
+
+    print('LOCATION PREMIUM')
+    print('rows:', len(premium_data))
+    print('zones estimated:', len(premium))
+    print('adjusted R-squared:', model.rsquared_adj)
+    print('\n')
+
+    print('reference flat:')
+    for key, value in reference.items():
+        print(key + ':', value)
+    print('\n')
+
+    print('price per sqm - min:', premium.min(), 'max:', premium.max())
+    print('most expensive zones:')
+    print(premium.sort_values(ascending=False).head(5))
+
+    return premium, reference
 
 
 def build_zone_geojson(zone_stats, breaks):
@@ -1966,8 +2489,11 @@ def build_zone_geojson(zone_stats, breaks):
         properties = {
             'id_nil': zone_id,
             'nome': feature['properties']['nome'],
+            'lon': feature['properties']['lon_centro'],
+            'lat': feature['properties']['lat_centro'],
             'n': 0,
             'cls': None,
+            'premium': None,
         }
 
         for value in values:
@@ -1987,19 +2513,24 @@ def build_zone_geojson(zone_stats, breaks):
                     np.searchsorted(breaks, zone['surface_avg'], side='right')
                 )
 
+                if pd.notna(zone['premium']):
+                    properties['premium'] = int(zone['premium'])
+
         feature['properties'] = properties
 
     coloured = [f for f in geojson['features'] if f['properties']['cls'] is not None]
+    priced = [f for f in geojson['features'] if f['properties']['premium'] is not None]
 
     print('ZONE GEOJSON')
     print('features:', len(geojson['features']))
     print('features with data:', len(coloured))
     print('features without data:', len(geojson['features']) - len(coloured))
+    print('features with a location premium:', len(priced))
 
     return geojson
 
 
-def map_metadata(map_data, zone_stats, breaks, min_listings, elevation_scale):
+def map_metadata(map_data, zone_stats, reference, breaks, min_listings, scale):
 
     displayed = zone_stats[~zone_stats['suppressed']]
 
@@ -2010,10 +2541,20 @@ def map_metadata(map_data, zone_stats, breaks, min_listings, elevation_scale):
         'surface_mean': int(map_data['surface_mq'].mean()),
         'zones': len(displayed),
         'suppressed': int(zone_stats['suppressed'].sum()),
-        'max_height': int(displayed['avg'].max() * elevation_scale),
+        'premium_zones': int(displayed['premium'].notna().sum()),
+        'max_height': int(displayed['avg'].max() * scale),
+        'reference': {
+            'surface': int(reference['surface_mq']),
+            'rooms': int(reference['rooms']),
+            'bathrooms': int(reference['bathrooms']),
+            'condition': int(reference['condition_numeric']),
+            'floor': int(reference['floor']),
+            'elevator': int(reference['elevator']),
+        },
         'breaks': breaks,
         'min_listings': min_listings,
-        'elevation_scale': elevation_scale,
+        'elevation_scale': scale,
+        'max_height_premium': int(displayed['premium'].max() * scale),
     }
 
     print('MAP METADATA')
@@ -2060,13 +2601,25 @@ def map_phase(df_clean):
     zone_stats = suppress_small_zones(zone_stats, min_listings)
     print('\n')
 
-    breaks = color_classes(zone_stats)
+    premium, reference = location_premium(map_data, min_listings)
+    zone_stats['premium'] = premium
     print('\n')
 
-    zone_geojson = build_zone_geojson(zone_stats, breaks)
+    displayed = zone_stats[~zone_stats['suppressed']]
+
+    breaks = {
+        'surface': value_classes(displayed['surface_avg'], 'mean surface in sqm'),
+        'avg': value_classes(displayed['avg'], 'mean price per sqm'),
+        'premium': value_classes(displayed['premium'], 'reference flat per sqm'),
+    }
     print('\n')
 
-    metadata = map_metadata(map_data, zone_stats, breaks, min_listings, elevation_scale)
+    zone_geojson = build_zone_geojson(zone_stats, breaks['surface'])
+    print('\n')
+
+    metadata = map_metadata(
+        map_data, zone_stats, reference, breaks, min_listings, elevation_scale
+    )
     print('\n')
 
     write_3d_map(zone_geojson, metadata)
