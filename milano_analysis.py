@@ -1894,18 +1894,25 @@ function refresh() {
 var rose = document.getElementById('rose');
 var degrees = document.getElementById('cp-deg');
 
+// zooming out past the city is never useful: there is no basemap under the
+// zones, so it would only shrink Milan into an empty screen
+var MIN_ZOOM = 10;
+
 var viewState = {
   longitude: 9.19,
   latitude: 45.44,
   zoom: 10.7,
   pitch: 50,
-  bearing: -20
+  bearing: -20,
+  minZoom: MIN_ZOOM
 };
 
 // the compass rose turns against the bearing, so its needle keeps pointing
 // at the real north whatever the camera is doing
 function applyViewState(next) {
-  viewState = next;
+  // reapplied every time so the limit cannot be dropped by a state coming
+  // back from the controller
+  viewState = Object.assign({}, next, {minZoom: MIN_ZOOM});
   deckgl.setProps({viewState: viewState});
 
   var bearing = viewState.bearing || 0;
