@@ -1526,7 +1526,7 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Milano — prezzo al m² per zona</title>
+<title>Milan — price per m² by zone</title>
 <style>
   /* one dark ground for both views: white block edges are what separates one
      zone from the next, and on a light ground they were invisible */
@@ -1599,27 +1599,27 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 <div id="map"></div>
 
 <div id="panel" class="card">
-  <h1>Milano, prezzo e superficie per zona</h1>
-  <p><b>Altezza</b>: prezzo medio al m². <b>Colore</b>: superficie media
-     degli appartamenti. Due variabili diverse, negli 88 Nuclei d'Identità
-     Locale.</p>
+  <h1>Milan, price and floor area by zone</h1>
+  <p><b>Height</b>: mean price per m². <b>Colour</b>: mean flat floor area.
+     Two different variables, over the 88 official city zones (NIL,
+     <i>Nuclei d'Identità Locale</i>).</p>
 
   <div class="sec">
     <dl>
-      <dt>Annunci mappati</dt><dd id="s-listings"></dd>
-      <dt>Zone rappresentate</dt><dd id="s-zones"></dd>
-      <dt>Prezzo medio città</dt><dd id="s-mean"></dd>
-      <dt>Superficie media città</dt><dd id="s-surface"></dd>
+      <dt>Listings mapped</dt><dd id="s-listings"></dd>
+      <dt>Zones shown</dt><dd id="s-zones"></dd>
+      <dt>City mean price</dt><dd id="s-mean"></dd>
+      <dt>City mean floor area</dt><dd id="s-surface"></dd>
     </dl>
   </div>
 
   <div class="sec">
-    <div class="lab">Vista</div>
+    <div class="lab">View</div>
     <div class="switch">
       <button class="btn" type="button" data-view="3d" aria-pressed="true">
         3D</button>
       <button class="btn" type="button" data-view="2d" aria-pressed="false">
-        2D piatta</button>
+        2D flat</button>
     </div>
     <p class="note" id="view-note"></p>
   </div>
@@ -1628,9 +1628,9 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
     <div class="lab" id="mode-lab"></div>
     <div class="switch">
       <button class="btn" type="button" data-mode="avg" aria-pressed="true">
-        Prezzo medio</button>
+        Mean price</button>
       <button class="btn" type="button" data-mode="premium" aria-pressed="false">
-        Appartamento tipo</button>
+        Reference flat</button>
     </div>
     <p class="note" id="mode-note"></p>
   </div>
@@ -1644,20 +1644,19 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
   <div class="sec">
     <div class="lab" id="list-lab"></div>
     <div id="zone-list" class="list"></div>
-    <p class="note">Clicca una zona qui o direttamente sulla mappa. Clicca
-       fuori dalle zone, o premi Esc, per tornare alla vista d'insieme.</p>
+    <p class="note">Click a zone here or straight on the map. Click away from
+       the zones, or press Esc, to go back to the overview.</p>
   </div>
 
   <div class="sec" id="spin-sec">
-    <button id="spin" class="btn" type="button" aria-pressed="false">Ruota 360°</button>
-    <p class="note">Trascina per ruotare a mano, rotella per lo zoom, passa sopra
-       una zona per i dettagli. La bussola in basso a destra riporta il nord
-       in alto.</p>
+    <button id="spin" class="btn" type="button" aria-pressed="false">Spin 360°</button>
+    <p class="note">Drag to turn the map by hand, scroll to zoom, hover a zone
+       for its figures. The compass at the bottom right puts north back up.</p>
   </div>
 </div>
 
-<button id="compass" class="card" type="button" title="Rimetti il nord in alto"
-        aria-label="Bussola: clicca per rimettere il nord in alto">
+<button id="compass" class="card" type="button" title="Put north back up"
+        aria-label="Compass: click to put north back up">
   <svg viewBox="0 0 100 100" aria-hidden="true">
     <circle cx="50" cy="50" r="47" fill="none" stroke-width="2"/>
     <g id="rose" font-size="17" text-anchor="middle" dominant-baseline="central">
@@ -1666,7 +1665,7 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
       <text x="50" y="11" class="n-lab" font-weight="600">N</text>
       <text x="89" y="50" class="rose-lab">E</text>
       <text x="50" y="89" class="rose-lab">S</text>
-      <text x="11" y="50" class="rose-lab">O</text>
+      <text x="11" y="50" class="rose-lab">W</text>
     </g>
   </svg>
   <div class="deg" id="cp-deg"></div>
@@ -1700,7 +1699,7 @@ var PRICE = [
 var NODATA = [74, 77, 71];
 
 function fmt(value) {
-  return value == null ? 'n.d.' : value.toLocaleString('it-IT');
+  return value == null ? 'n/a' : value.toLocaleString('en-GB');
 }
 
 // 'avg' is the price actually asked in the zone, 'premium' the price of one
@@ -1786,25 +1785,25 @@ function tooltip(info) {
 
   if (p.avg == null) {
     body =
-      '<div style="font-size:16px">dati insufficienti</div>' +
+      '<div style="font-size:16px">not enough data</div>' +
       '<div style="color:#a6aaa2;font-size:12px;margin-top:3px">' +
-      p.n + ' annunci</div>';
+      p.n + ' listings</div>';
   } else {
     body =
       '<div style="font-size:19px;letter-spacing:-.3px">' +
-      fmt(p.avg) + ' €/m² <span style="font-size:12px;color:#a6aaa2">medi' +
+      fmt(p.avg) + ' €/m² <span style="font-size:12px;color:#a6aaa2">mean' +
       '</span></div>' +
       '<div style="font-size:19px;letter-spacing:-.3px">' +
       fmt(p.surface_avg) + ' m² <span style="font-size:12px;color:#a6aaa2">' +
-      'medi</span></div>' +
+      'mean</span></div>' +
       '<div style="color:#a6aaa2;font-size:12px;margin-top:5px">' +
-      'appartamento tipo ' + fmt(p.premium) + ' €/m²</div>' +
+      'reference flat ' + fmt(p.premium) + ' €/m²</div>' +
       '<div style="color:#a6aaa2;font-size:12px">' +
-      'mediana ' + fmt(p.med) + ' €/m² · p25–p75 ' +
+      'median ' + fmt(p.med) + ' €/m² · p25–p75 ' +
       fmt(p.p25) + '–' + fmt(p.p75) + '</div>' +
       '<div style="color:#a6aaa2;font-size:12px">' +
-      p.n + ' annunci · prezzo mediano ' + fmt(p.mp) + ' € · ' +
-      'superficie mediana ' + fmt(p.surface_med) + ' m²</div>';
+      p.n + ' listings · median price ' + fmt(p.mp) + ' € · ' +
+      'median floor area ' + fmt(p.surface_med) + ' m²</div>';
   }
 
   return {
@@ -2018,7 +2017,7 @@ function stopSpin() {
   spinning = false;
   move = null;
   lastFrame = 0;
-  button.textContent = 'Ruota 360°';
+  button.textContent = 'Spin 360°';
   button.setAttribute('aria-pressed', 'false');
 }
 
@@ -2031,7 +2030,7 @@ button.addEventListener('click', function () {
   stopSpin();
   spinning = true;
   lastFrame = 0;
-  button.textContent = 'Ferma la rotazione';
+  button.textContent = 'Stop spinning';
   button.setAttribute('aria-pressed', 'true');
   requestAnimationFrame(spin);
 });
@@ -2042,7 +2041,7 @@ function legendRow(color, label) {
 }
 
 document.getElementById('s-listings').textContent = fmt(M.listings);
-document.getElementById('s-zones').textContent = M.zones + ' su 88';
+document.getElementById('s-zones').textContent = M.zones + ' of 88';
 document.getElementById('s-mean').textContent = fmt(M.mean) + ' €/m²';
 document.getElementById('s-surface').textContent = M.surface_mean + ' m²';
 
@@ -2050,11 +2049,11 @@ function buildLegend() {
   var cuts = breaks();
   var colors = ramp();
   var labels = [
-    'fino a ' + fmt(cuts[0]),
+    'up to ' + fmt(cuts[0]),
     fmt(cuts[0]) + ' – ' + fmt(cuts[1]),
     fmt(cuts[1]) + ' – ' + fmt(cuts[2]),
     fmt(cuts[2]) + ' – ' + fmt(cuts[3]),
-    'oltre ' + fmt(cuts[3])
+    'over ' + fmt(cuts[3])
   ];
 
   var rows = '';
@@ -2063,22 +2062,22 @@ function buildLegend() {
     rows += legendRow(colors[i], labels[i]);
   }
 
-  rows += legendRow(NODATA, 'meno di ' + M.min_listings + ' annunci');
+  rows += legendRow(NODATA, 'fewer than ' + M.min_listings + ' listings');
 
   document.getElementById('lg-rows').innerHTML = rows;
   document.getElementById('lg-lab').textContent =
     view === '3d'
-      ? 'Colore — superficie media m²'
-      : 'Colore — ' +
-        (mode === 'avg' ? 'prezzo medio' : 'appartamento tipo') + ' €/m²';
+      ? 'Colour — mean floor area m²'
+      : 'Colour — ' +
+        (mode === 'avg' ? 'mean price' : 'reference flat') + ' €/m²';
 
   document.getElementById('lg-note').textContent =
     view === '3d'
-      ? 'In 3D il colore non è il prezzo: è la superficie media, perché il ' +
-        'prezzo lo porta già l\\'altezza (proporzionale a partire da zero, ' +
-        'scala ' + M.elevation_scale + ').'
-      : 'Senza altezza il colore torna a portare il prezzo. La superficie ' +
-        'media resta nel tooltip.';
+      ? 'In 3D the colour is not the price: it is the mean floor area, ' +
+        'because the height already carries the price (proportional from ' +
+        'zero, scale ' + M.elevation_scale + ').'
+      : 'With no height left, the colour takes the price over. Mean floor ' +
+        'area stays in the tooltip.';
 }
 
 // the ranked list is the honest counterpart of the height: in perspective the
@@ -2115,8 +2114,8 @@ function buildList() {
 
   list.innerHTML = html;
   listLabel.textContent =
-    'Zone per ' + (mode === 'avg' ? 'prezzo medio' : 'appartamento tipo') +
-    ' — ' + zones.length + ' su 88';
+    'Zones by ' + (mode === 'avg' ? 'mean price' : 'reference flat') +
+    ' — ' + zones.length + ' of 88';
 }
 
 // with a tilted camera the blocks between the viewer and the target hide it,
@@ -2265,17 +2264,17 @@ function setMode(next) {
   buildLegend();
 
   document.getElementById('mode-lab').textContent =
-    view === '3d' ? 'Altezza dei blocchi' : 'Variabile mostrata';
+    view === '3d' ? 'Block height' : 'Variable shown';
 
   modeNote.textContent =
     mode === 'avg'
-      ? 'Il prezzo davvero richiesto nella zona. Comprende il fatto che in certi ' +
-        'quartieri gli appartamenti sono più grandi e più ristrutturati che altrove.'
-      : 'Quanto costerebbe lo stesso appartamento — ' + R.surface + ' m², ' +
-        R.rooms + ' locali, ' + R.bathrooms + ' bagno, ristrutturato, al piano ' +
-        R.floor + ' con ascensore — se stesse in quella zona. Isola la posizione ' +
-        'dalle caratteristiche degli immobili che ci si trovano. Stimato su ' +
-        M.premium_zones + ' zone.';
+      ? 'The price actually asked in the zone. It carries the fact that in some ' +
+        'neighbourhoods the flats are larger and better kept than elsewhere.'
+      : 'What the same flat — ' + R.surface + ' m², ' + R.rooms + ' rooms, ' +
+        R.bathrooms + ' bathroom, renovated, floor ' + R.floor + ' with a lift ' +
+        '— would cost in that zone. It separates the location from the ' +
+        'properties that happen to stand on it. Estimated over ' +
+        M.premium_zones + ' zones.';
 }
 
 Array.prototype.forEach.call(modeButtons, function (item) {
@@ -2296,10 +2295,10 @@ function setView(next, animate) {
   document.getElementById('spin-sec').hidden = view === '2d';
   document.getElementById('view-note').textContent =
     view === '3d'
-      ? 'Due variabili insieme: altezza e colore. Bella da guardare, ma le ' +
-        'altezze in prospettiva non si confrontano a occhio.'
-      : 'Una variabile sola, letta dall\\'alto. Meno spettacolare e più ' +
-        'precisa: nessuna zona ne copre un\\'altra.';
+      ? 'Two variables at once, height and colour. Good to look at, but ' +
+        'heights seen in perspective cannot be compared by eye.'
+      : 'One variable, read from above. Less striking and more precise: no ' +
+        'zone can hide another.';
 
   if (animate) {
     stopSpin();

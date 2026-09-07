@@ -1,765 +1,766 @@
-# Milano Real Estate — Analisi Statistica
+# Milan Real Estate — Statistical Analysis
 
-**Quali fattori influenzano il prezzo delle case a Milano, e cosa può dirci l'analisi statistica sul mercato immobiliare?**
+> 🇮🇹 Versione italiana: **[README.it.md](README.it.md)**
 
-L'analisi lavora su ~18k annunci di vendita raccolti da immobiliare.it e percorre l'intero strumentario statistico — dalla statistica descrittiva alla regressione lineare multipla — per arrivare a una **mappa interattiva del prezzo per zona**, in `milano-3d.html`.
+**Which factors drive house prices in Milan, and what can statistical analysis tell us about the property market?**
 
-Il resoconto dei risultati, in forma leggibile senza conoscenze statistiche, è in **[REPORT.md](REPORT.md)**. Questo file documenta i dati, il metodo e le decisioni tecniche.
+The analysis works on ~18k sale listings collected from immobiliare.it and walks through the whole statistical toolkit — from descriptive statistics to multiple linear regression — to arrive at an **interactive map of price by zone**, in `milano-3d.html`.
 
-> Il README è scritto in italiano durante lo sviluppo; verrà tradotto in inglese a progetto concluso.
+The write-up of the results, in a form readable without any background in statistics, is in **[REPORT.md](REPORT.md)**. This file documents the data, the method and the technical decisions.
 
 ---
 
 ## Dataset
 
-`immobiliare_milano_vendita.csv` — **18.017 righe × 31 colonne**, annunci di vendita residenziale a Milano.
+`immobiliare_milano_vendita.csv` — **18,017 rows × 31 columns**, residential sale listings in Milan.
 
-**Data di estrazione: 26 agosto 2026.** La data non è desumibile dal CSV, che non contiene colonne temporali; la fonte è il campo `fonte_prezzi` del GeoJSON, che riporta `Immobiliare.it, estrazione 2026-08-26`, coerente sia con la data di modifica del file sia con il primo commit del repository. Tutto il progetto è quindi una sezione trasversale riferita a un solo giorno: nessuna analisi temporale è possibile, e nessuna viene tentata.
+**Extraction date: 26 August 2026.** The date cannot be derived from the CSV, which has no time columns; the source is the `fonte_prezzi` field of the GeoJSON, which reads `Immobiliare.it, estrazione 2026-08-26`, consistent both with the file's modification time and with the first commit of the repository. The whole project is therefore a cross-section referring to a single day: no time-series analysis is possible, and none is attempted.
 
-### Variabili usate nell'analisi
+### Variables used in the analysis
 
-| Variabile | Tipo | Descrizione |
+| Variable | Type | Description |
 |---|---|---|
-| `price` | float | Prezzo richiesto in € (50 mancanti) |
-| `surface_mq` | float | Superficie in m² (29 mancanti) |
-| `price_per_mq` | float | `price / surface_mq`, già calcolato nel file (79 mancanti) |
-| `rooms` | stringa | Numero di locali — `1`…`5`, `5+`, più intervalli tipo `2 - 4` per i progetti multi-unità |
-| `bedrooms` | float | Numero di camere da letto (2.014 mancanti) |
-| `bathrooms` | stringa | `1`, `2`, `3`, `3+` (1.100 mancanti) |
-| `floor` | stringa | Testo libero — `3`, `3 piano`, `piano terra`, `piano rialzato`, … (233 valori distinti) |
-| `elevator` | float | **Solo `1.0` oppure mancante** — non esiste alcuno `0` esplicito |
-| `condition` | stringa | `Nuovo / In costruzione`, `Ottimo / Ristrutturato`, `Buono / Abitabile`, `Da ristrutturare` |
-| `heating` | stringa | `Centralizzato`, `Autonomo`, `Assente` |
-| `is_new` | int | Flag nuova costruzione (419 annunci) |
-| `luxury` | int | Flag segmento lusso (3.591 annunci) |
-| `typology` | stringa | `Bilocale`, `Trilocale`, `Appartamento`, `Attico`, `Loft`, … |
-| `microzone` | stringa | Zona fine, **144 distinte** (es. `Dergano`, `Maggiolina`) |
-| `macrozone` | stringa | Zona aggregata, **32 distinte** (es. `Affori, Bovisa`) — variabile di raggruppamento delle fasi 4-5 |
-| `nil_id`, `nil` | float / stringa | NIL di appartenenza, **88 distinti** — è la chiave di aggancio della mappa della fase 10, e i suoi id combaciano esattamente con quelli del GeoJSON |
-| `lat`, `lon`, `has_geo` | float / int | Coordinate; 16.727 annunci sono geolocalizzati — usate per i centri di zona della mappa |
+| `price` | float | Asking price in € (50 missing) |
+| `surface_mq` | float | Floor area in m² (29 missing) |
+| `price_per_mq` | float | `price / surface_mq`, already computed in the file (79 missing) |
+| `rooms` | string | Number of rooms — `1`…`5`, `5+`, plus ranges such as `2 - 4` for multi-unit developments |
+| `bedrooms` | float | Number of bedrooms (2,014 missing) |
+| `bathrooms` | string | `1`, `2`, `3`, `3+` (1,100 missing) |
+| `floor` | string | Free text — `3`, `3 piano`, `piano terra`, `piano rialzato`, … (233 distinct values) |
+| `elevator` | float | **Only `1.0` or missing** — no explicit `0` exists |
+| `condition` | string | `Nuovo / In costruzione`, `Ottimo / Ristrutturato`, `Buono / Abitabile`, `Da ristrutturare` |
+| `heating` | string | `Centralizzato`, `Autonomo`, `Assente` |
+| `is_new` | int | New-build flag (419 listings) |
+| `luxury` | int | Luxury segment flag (3,591 listings) |
+| `typology` | string | `Bilocale`, `Trilocale`, `Appartamento`, `Attico`, `Loft`, … |
+| `microzone` | string | Fine-grained zone, **144 distinct** (e.g. `Dergano`, `Maggiolina`) |
+| `macrozone` | string | Aggregated zone, **32 distinct** (e.g. `Affori, Bovisa`) — the grouping variable of phases 4-5 |
+| `nil_id`, `nil` | float / string | Zone of belonging, **88 distinct** — the join key of the phase 10 map, whose ids match those of the GeoJSON exactly |
+| `lat`, `lon`, `has_geo` | float / int | Coordinates; 16,727 listings are geocoded — used for the zone centres on the map |
 
-### Variabili non usate nell'analisi statistica
+### Variables not used in the statistical analysis
 
-| Variabile | Descrizione |
+| Variable | Description |
 |---|---|
-| `id`, `unit` | Identificativo dell'annuncio e indice della sotto-unità (vedi sotto) |
-| `url`, `title`, `address` | Testo libero / identificativi |
-| `city`, `region` | Costanti (`Milano` / `Lombardia`) |
-| `category` | `Residenziale` (16.469), `Nuove costruzioni` (137), `Palazzi - Edifici` (135) — usata come **filtro**, non come variabile |
-| `agency` | Agenzia venditrice (569 mancanti) — possibile estensione, fuori dal modello principale |
-| `is_outlier`, `price_is_range` | Flag di qualità già presenti nella sorgente — usati come **filtri** |
+| `id`, `unit` | Listing identifier and sub-unit index (see below) |
+| `url`, `title`, `address` | Free text / identifiers |
+| `city`, `region` | Constants (`Milano` / `Lombardia`) |
+| `category` | `Residenziale` (16,469), `Nuove costruzioni` (137), `Palazzi - Edifici` (135) — used as a **filter**, not as a variable |
+| `agency` | Selling agency (569 missing) — a possible extension, outside the main model |
+| `is_outlier`, `price_is_range` | Quality flags already present in the source — used as **filters** |
 
 ---
 
-## Pulizia dei dati
+## Data cleaning
 
-**Fase completata.** La pulizia si è tradotta in cinque decisioni, tutte prese prima di calcolare qualunque statistica. Ciascuna è implementata in `milano_analysis.py` come una funzione a sé, e ogni passaggio stampa il conteggio delle righe prima e dopo, in modo che la cascata dei filtri resti ispezionabile invece di essere soltanto dichiarata.
+**Phase complete.** Cleaning came down to five decisions, all taken before computing any statistic. Each is implemented in `milano_analysis.py` as a function of its own, and every step prints the row count before and after, so that the cascade of filters remains inspectable rather than merely asserted.
 
-**1. Eliminare le sotto-unità.** Gli annunci multi-unità, cioè i progetti di nuova costruzione, compaiono nel file come una riga padre con `unit = 0` seguita da una riga per ciascun appartamento con `unit = 1, 2, 3…`, e tutte queste righe ripetono lo stesso identico `price`: in un caso si arriva a trentasei sotto-unità per un unico prezzo. Il filtro `unit == 0` ne rimuove 1.276, portando il dataset da 18.017 a 16.741 righe. Va detto che le righe delle sotto-unità non hanno il campo `category` valorizzato, quindi il filtro successivo le rimuoverebbe comunque; il filtro esplicito su `unit` viene mantenuto perché tiene l'intenzione visibile nel codice, anziché affidarla a un effetto collaterale di un altro passaggio.
+**1. Remove sub-units.** Multi-unit listings, that is new-build developments, appear in the file as a parent row with `unit = 0` followed by one row per flat with `unit = 1, 2, 3…`, and all these rows repeat the very same `price`: in one case there are thirty-six sub-units for a single price. The filter `unit == 0` removes 1,276 of them, taking the dataset from 18,017 to 16,741 rows. It should be said that sub-unit rows have no `category` value, so the next filter would remove them anyway; the explicit filter on `unit` is kept because it keeps the intent visible in the code, rather than entrusting it to a side effect of another step.
 
-**2. Applicare i flag di qualità della sorgente.** I filtri sono tre e vanno applicati in cascata; è proprio la cascata, più che i singoli filtri, a rivelare qualcosa sui dati.
+**2. Apply the source's quality flags.** There are three filters and they are applied in cascade; it is the cascade, more than the individual filters, that reveals something about the data.
 
-| Filtro | Righe rimaste | Rimosse |
+| Filter | Rows left | Removed |
 |---|---|---|
-| dopo `unit == 0` | 16.741 | — |
-| `category == 'Residenziale'` | 16.469 | 272 (`Nuove costruzioni` 137, `Palazzi - Edifici` 135) |
-| `is_outlier == 0` | 16.346 | 123 |
-| `price_is_range == 0` | 16.346 | **0** |
+| after `unit == 0` | 16,741 | — |
+| `category == 'Residenziale'` | 16,469 | 272 (`Nuove costruzioni` 137, `Palazzi - Edifici` 135) |
+| `is_outlier == 0` | 16,346 | 123 |
+| `price_is_range == 0` | 16,346 | **0** |
 
-Sul file grezzo questi flag marcano 1.567 outlier e 1.321 prezzi espressi come intervallo, ma la quasi totalità di queste righe è già stata eliminata dai filtri precedenti. Gli annunci con prezzo a intervallo sono infatti, per costruzione, i progetti multi-unità, e dopo i primi due filtri non ne sopravvive nemmeno uno. Il filtro `price_is_range` posto a valle non scarta quindi nulla, e resta nel codice come verifica esplicita anziché come passaggio attivo. È un caso in cui il risultato atteso, circa 1.300 righe da scartare, e quello reale, zero, divergono completamente: la spiegazione della divergenza vale più del numero in sé.
+In the raw file these flags mark 1,567 outliers and 1,321 range prices, but almost all of those rows have already been removed by the preceding filters. Listings with a range price are, by construction, the multi-unit developments, and after the first two filters not a single one survives. The `price_is_range` filter placed downstream therefore discards nothing, and remains in the code as an explicit check rather than an active step. It is a case in which the expected result, roughly 1,300 rows to discard, and the actual one, zero, diverge completely: the explanation of the divergence is worth more than the figure itself.
 
-**3. Scartare le righe senza prezzo o superficie.** Le tre variabili `price`, `surface_mq` e `price_per_mq` sono quelle da cui dipende tutto il resto dell'analisi. Nel file grezzo mancano rispettivamente in 50, 29 e 79 righe, ma dopo i filtri di qualità i valori mancanti sono zero per tutte e tre, perché anche in questo caso i buchi erano concentrati nelle righe già rimosse. Il passaggio si è quindi ridotto a un controllo di conferma.
+**3. Discard rows without a price or a floor area.** The three variables `price`, `surface_mq` and `price_per_mq` are the ones everything else in the analysis depends on. In the raw file they are missing in 50, 29 and 79 rows respectively, but after the quality filters the missing values are zero for all three, because here too the gaps were concentrated in rows already removed. The step therefore reduced to a confirmation check.
 
-**4. La colonna `elevator`, dove il valore mancante significa "no".** Nel file grezzo questa colonna assume soltanto due valori, `1.0` in 13.572 righe e `NaN` nelle restanti 4.445, senza che compaia mai uno zero esplicito. Non si tratta quindi di una colonna con dei buchi, ma di una codifica a sola presenza: il campo viene scritto solo quando l'annuncio dichiara l'ascensore. Viene perciò ricodificata in una variabile dummy 0/1 pulita, che sul dataset filtrato conta 12.367 immobili con ascensore e 3.979 senza.
+**4. The `elevator` column, where a missing value means "no".** In the raw file this column takes only two values, `1.0` in 13,572 rows and `NaN` in the remaining 4,445, with no explicit zero ever appearing. This is not a column with gaps in it, but a presence-only encoding: the field is written only when the listing declares a lift. It is therefore recoded into a clean 0/1 dummy, which on the filtered dataset counts 12,367 properties with a lift and 3,979 without.
 
-L'alternativa, cioè trattare i `NaN` come dato mancante vero, comporterebbe l'esclusione automatica di 4.445 annunci, il 27% del dataset, dalla regressione della fase 8. Sarebbe per giunta un'esclusione tutt'altro che casuale, perché gli annunci con il campo vuoto sono sistematicamente immobili più vecchi, più piccoli e più periferici, cioè proprio il segmento che serve per stimare l'effetto dell'ascensore. Si perderebbero i dati e allo stesso tempo si introdurrebbe una distorsione, invece di evitarla.
+The alternative, that is treating the `NaN` values as genuinely missing data, would automatically exclude 4,445 listings, 27% of the dataset, from the phase 8 regression. It would moreover be anything but a random exclusion, because listings with an empty field are systematically older, smaller and more peripheral properties, precisely the segment needed to estimate the effect of a lift. One would lose the data and at the same time introduce a bias, instead of avoiding one.
 
-Il rischio residuo della codifica scelta è che qualche immobile abbia davvero l'ascensore senza che il campo sia stato compilato. Quei casi finiscono etichettati come "senza" e hanno l'effetto di attenuare β₅ verso lo zero, il che significa che la stima dell'effetto risulta più piccola del vero e mai più grande. Si tratta quindi di un errore conservativo, e la fase 8 stima β₅ = 0,0789 sapendo che è semmai una sottostima. Una verifica empirica di questa assunzione non è però possibile, per una ragione spiegata nella fase 8 che discende a sua volta dalla codifica a sola presenza.
+The residual risk of the chosen encoding is that some property really does have a lift without the field having been filled in. Those cases end up labelled as "without" and have the effect of attenuating β₅ towards zero, which means the estimated effect comes out smaller than the truth and never larger. It is therefore a conservative error, and phase 8 estimates β₅ = 0.0789 knowing it is, if anything, an underestimate. An empirical check of this assumption is not possible, for a reason explained in phase 8 which itself follows from the presence-only encoding.
 
-**5. Convertire le colonne testuali in numeriche.** Tre colonne arrivano dalla sorgente come stringhe e vanno tradotte in numeri.
+**5. Convert the text columns into numeric ones.** Three columns arrive from the source as strings and need translating into numbers.
 
-- `rooms` — `5+` → 5 (609 righe), gli intervalli tipo `2 - 4` vengono scartati per regex, ma sul dataset filtrato **non ne resta nessuno**: comparivano solo sulle righe multi-unità, già rimosse al passaggio 1. Nessuna riga persa qui.
-- `bathrooms` — `3+` → 3 (313 righe).
-- `floor` — normalizzato a minuscolo, poi `piano terra` → 0 (2.035 righe) e `piano rialzato` → 0,5 (1.267 righe); per il resto si estrae il primo numero, così `3 piano` → 3.
+- `rooms` — `5+` → 5 (609 rows); ranges such as `2 - 4` are discarded by regex, but **none remain** on the filtered dataset, since they appeared only on the multi-unit rows already removed at step 1. No rows are lost here.
+- `bathrooms` — `3+` → 3 (313 rows).
+- `floor` — lower-cased, then `piano terra` → 0 (2,035 rows) and `piano rialzato` → 0.5 (1,267 rows); for the rest the first number is extracted, so `3 piano` → 3.
 
-Il risultato complessivo della pulizia è di 16.346 annunci utilizzabili, pari al 90,7% del file grezzo, dei quali 16.333 dotati di zona di appartenenza. Tutte e 32 le macrozone sopravvivono ai filtri con almeno 115 annunci ciascuna, il che è sufficiente per i confronti fra gruppi delle fasi 4 e 5 senza dover accorpare categorie. Non risultano righe duplicate.
+The overall result of the cleaning is 16,346 usable listings, 90.7% of the raw file, of which 16,333 have a zone of belonging. All 32 macro-zones survive the filters with at least 115 listings each, which is enough for the between-group comparisons of phases 4 and 5 without having to merge categories. No duplicate rows are found.
 
-### Mancanti residui sul dataset pulito
+### Residual missing values on the clean dataset
 
-Le tre variabili portanti sono complete, mentre ciò che resta scoperto riguarda le variabili di contorno. Questi mancanti vanno gestiti in fase di modellazione anziché a monte, perché eliminare adesso le righe incomplete significherebbe perderle anche per tutte le analisi che quelle variabili non le usano.
+The three load-bearing variables are complete, while what remains uncovered concerns the peripheral variables. These missing values are handled at modelling time rather than upstream, because dropping the incomplete rows now would mean losing them for all the analyses that do not use those variables.
 
-| Variabile | Mancanti | Quota | Nota |
+| Variable | Missing | Share | Note |
 |---|---|---|---|
-| `bathrooms` | 844 | 5,2% | rilevante per la fase 8 |
-| `condition` | 587 | 3,6% | idem |
-| `floor` | 544 | 3,3% | testo non riconducibile a un numero |
-| `bedrooms` | 444 | 2,7% | fuori dal modello principale |
-| `rooms` | 106 | 0,6% | |
-| `lat` / `lon` / `nil` | 13 | 0,1% | escluse dalla mappa della fase 10 |
-| `microzone` | 57 | 0,3% | `macrozone` ne manca solo 12 |
+| `bathrooms` | 844 | 5.2% | relevant to phase 8 |
+| `condition` | 587 | 3.6% | likewise |
+| `floor` | 544 | 3.3% | text not reducible to a number |
+| `bedrooms` | 444 | 2.7% | outside the main model |
+| `rooms` | 106 | 0.6% | |
+| `lat` / `lon` / `nil` | 13 | 0.1% | excluded from the phase 10 map |
+| `microzone` | 57 | 0.3% | `macrozone` is missing in only 12 |
 
-La regressione della fase 8 usa `rooms`, `bathrooms`, `condition` e `floor` contemporaneamente, e la perdita cumulata dovuta all'eliminazione delle righe incomplete è risultata di 1.707 righe, il 10,4% del totale: il modello completo gira quindi su 14.639 annunci. I mancanti delle diverse colonne si sovrappongono solo in parte, e questo spiega perché il costo complessivo sia inferiore alla somma delle singole quote ma superiore alla più grande di esse.
+The phase 8 regression uses `rooms`, `bathrooms`, `condition` and `floor` at once, and the cumulative loss from dropping incomplete rows came to 1,707 rows, 10.4% of the total: the full model therefore runs on 14,639 listings. The missing values of the different columns overlap only partly, which explains why the total cost is lower than the sum of the individual shares but higher than the largest of them.
 
-Resta infine un'anomalia da tenere d'occhio: la colonna `floor` contiene un valore pari a 41 in una singola riga. A Milano un quarantunesimo piano è implausibile, quindi il caso va ispezionato prima della fase 7, dove i residui diventano oggetto di analisi. Gli altri valori estremi, 19 e 21, sono invece compatibili con le torri di Porta Nuova e CityLife.
+One anomaly is finally worth watching: the `floor` column contains a value of 41 in a single row. A forty-first floor is implausible in Milan, so the case should be inspected before phase 7, where residuals become the object of analysis. The other extreme values, 19 and 21, are compatible with the towers of Porta Nuova and CityLife.
 
 ---
 
-## Struttura dell'analisi
+## Structure of the analysis
 
 ### Phase 1 — Descriptive Statistics
 
-**Fase completata.** La funzione `descriptive_statistics` calcola media, mediana, moda, varianza, deviazione standard, minimo, massimo, quartili, scarto interquartile, range, coefficiente di variazione e asimmetria sulle tre variabili centrali — `price`, `surface_mq` e `price_per_mq` — e le raccoglie in un'unica tabella. A corredo, `plot_boxplots` produce un box plot per ciascuna delle tre, che rende visibile la stessa asimmetria dichiarata dai numeri: il baffo superiore è lunghissimo e oltre il terzo quartile si addensa una nuvola fitta di punti.
+**Phase complete.** The `descriptive_statistics` function computes mean, median, mode, variance, standard deviation, minimum, maximum, quartiles, interquartile range, range, coefficient of variation and skewness on the three central variables — `price`, `surface_mq` and `price_per_mq` — and collects them into a single table. Alongside it, `plot_boxplots` produces a box plot for each of the three, which makes visible the same asymmetry the numbers declare: the upper whisker is very long, and beyond the third quartile a dense cloud of points builds up.
 
-Il punto della fase, però, non sta nei singoli numeri ma nel confronto fra le tre variabili.
+The point of the phase, however, does not lie in the individual numbers but in the comparison between the three variables.
 
-| | media | mediana | CV | asimmetria |
+| | mean | median | CV | skewness |
 |---|---|---|---|---|
-| `price` | € 570.105 | € 379.000 | **1,18** | 5,68 |
-| `surface_mq` | 95 m² | 80 m² | 0,67 | 3,42 |
-| `price_per_mq` | € 5.622 | € 5.073 | **0,47** | 1,83 |
+| `price` | € 570,105 | € 379,000 | **1.18** | 5.68 |
+| `surface_mq` | 95 m² | 80 m² | 0.67 | 3.42 |
+| `price_per_mq` | € 5,622 | € 5,073 | **0.47** | 1.83 |
 
-Ci sono due cose da leggere in questa tabella. La prima è che la media supera nettamente la mediana per tutte e tre le variabili, il che indica distribuzioni asimmetriche a destra e porta a una conclusione operativa: la media non è un buon riassunto dell'annuncio milanese tipico, perché una manciata di immobili sopra i dieci milioni di euro la trascina verso l'alto di circa la metà.
+There are two things to read in this table. The first is that the mean clearly exceeds the median for all three variables, which indicates right-skewed distributions and leads to an operational conclusion: the mean is not a good summary of the typical Milan listing, because a handful of properties above ten million euros drags it upwards by about half.
 
-La seconda è che il coefficiente di variazione scende da 1,18 a 0,47 non appena si normalizza il prezzo per la superficie. Questo significa che gran parte della variabilità grezza dei prezzi è semplicemente variabilità di dimensione degli immobili. È il primo risultato sostanziale del progetto, ed è anche la ragione per cui `price_per_mq` diventa la variabile di confronto dalla fase 4 in avanti.
+The second is that the coefficient of variation falls from 1.18 to 0.47 as soon as price is normalised by floor area. This means that much of the raw variability in prices is simply variability in the size of the properties. It is the first substantive result of the project, and it is also the reason why `price_per_mq` becomes the comparison variable from phase 4 onwards.
 
 ### Phase 2 — Probability & Distributions
 
-**Fase completata.** La fase si articola in cinque passaggi, tutti condotti sulle stesse tre variabili centrali.
+**Phase complete.** The phase is organised into five steps, all carried out on the same three central variables.
 
-- **Istogrammi** (`plot_hist`), con media e mediana marcate da due linee verticali sul grafico perché l'asimmetria si veda invece di essere dedotta dalla tabella della fase 1.
-- **Q-Q plot** contro la normale (`plot_qq`, via `scipy.stats.probplot`). La coda destra si stacca dalla diagonale in modo netto: è la stessa asimmetria di prima, letta sui quantili.
-- **Percentili** p1, p5, p10, p25, p50, p75, p90, p95, p99 (`percentile_statistics`) — su una distribuzione come questa una tabella di percentili dice molto più di una media.
-- **Indici di forma** (`distribution_shape`): curtosi accanto all'asimmetria, in un'unica tabella.
-- **Trasformazione logaritmica** di `price` (`log_transform`), con le due scale mostrate affiancate — istogramma e curva normale sovrapposta a sinistra sul prezzo grezzo, a destra su `log(price)` (`plot_log_comparison`). La curva normale sovrapposta all'istogramma delle tre variabili in scala originale sta in `plot_normal_distribution`.
+- **Histograms** (`plot_hist`), with mean and median marked by two vertical lines on the chart, so that the asymmetry is seen rather than deduced from the phase 1 table.
+- **Q-Q plots** against the normal (`plot_qq`, via `scipy.stats.probplot`). The right tail departs sharply from the diagonal: it is the same asymmetry as before, read on the quantiles.
+- **Percentiles** p1, p5, p10, p25, p50, p75, p90, p95, p99 (`percentile_statistics`) — on a distribution like this one, a table of percentiles says far more than a mean.
+- **Shape statistics** (`distribution_shape`): kurtosis alongside skewness, in a single table.
+- **Log transformation** of `price` (`log_transform`), with the two scales shown side by side — histogram and fitted normal curve on the raw price on the left, on `log(price)` on the right (`plot_log_comparison`). The normal curve overlaid on the histograms of the three variables in their original scale is in `plot_normal_distribution`.
 
-**Percentili**
+**Percentiles**
 
 | | p1 | p10 | p25 | p50 | p75 | p90 | p99 |
 |---|---|---|---|---|---|---|---|
-| `price` (€) | 85.950 | 190.800 | 260.000 | 379.000 | 600.000 | 1.090.000 | 3.511.000 |
+| `price` (€) | 85,950 | 190,800 | 260,000 | 379,000 | 600,000 | 1,090,000 | 3,511,000 |
 | `surface_mq` (m²) | 25 | 45 | 56 | 80 | 110 | 160 | 360 |
-| `price_per_mq` (€/m²) | 1.576 | 3.045 | 3.941 | 5.073 | 6.695 | 8.762 | 15.399 |
+| `price_per_mq` (€/m²) | 1,576 | 3,045 | 3,941 | 5,073 | 6,695 | 8,762 | 15,399 |
 
-Il salto dal novantesimo al novantanovesimo percentile del prezzo vale quasi due milioni e mezzo di euro. Il dieci per cento più caro del mercato è insomma un mondo a parte, e da solo spiega perché la media rilevata nella fase 1 si collochi a 570.105 euro contro una mediana di 379.000. Sul prezzo al metro quadro la stessa distanza si comprime notevolmente, passando da 8.762 a 15.399 euro, cioè meno del doppio: normalizzare per la superficie toglie di mezzo la dimensione e lascia in gioco soltanto il premio di posizione e di qualità.
+The jump from the ninetieth to the ninety-ninth percentile of price is worth almost two and a half million euros. The dearest ten per cent of the market is, in short, a world apart, and on its own explains why the mean measured in phase 1 sits at 570,105 euros against a median of 379,000. On price per square metre the same distance compresses considerably, going from 8,762 to 15,399 euros, that is less than double: normalising by floor area removes size from the picture and leaves only the premium for location and quality in play.
 
-**Forma della distribuzione**
+**Shape of the distribution**
 
-| | asimmetria | curtosi (in eccesso) |
+| | skewness | excess kurtosis |
 |---|---|---|
-| `price` | 5,68 | **54,98** |
-| `surface_mq` | 3,42 | 19,79 |
-| `price_per_mq` | 1,83 | 5,88 |
+| `price` | 5.68 | **54.98** |
+| `surface_mq` | 3.42 | 19.79 |
+| `price_per_mq` | 1.83 | 5.88 |
 
-La curtosi aggiunge un'informazione che l'asimmetria da sola non fornisce. Un valore di 54,98 contro lo zero della distribuzione normale indica code enormemente più pesanti, il che significa che gli eventi estremi non sono affatto rari come una normale con la stessa media e la stessa deviazione standard prevederebbe. La curva normale sovrapposta all'istogramma lo rende evidente a colpo d'occhio: la gaussiana adattata su media e sigma del prezzo risulta troppo larga al centro e troppo sottile in coda. Non sbaglia di poco, sbaglia la forma.
+Kurtosis adds information that skewness alone does not provide. A value of 54.98 against the zero of the normal distribution indicates enormously heavier tails, which means that extreme events are nowhere near as rare as a normal with the same mean and standard deviation would predict. The normal curve overlaid on the histogram makes this obvious at a glance: the Gaussian fitted on the mean and sigma of price turns out to be too wide in the middle and too thin in the tails. It is not slightly off, it has the wrong shape.
 
-**Trasformazione logaritmica**
+**Log transformation**
 
-Applicando il logaritmo al prezzo, l'asimmetria scende da 5,68 a 0,66 e la curtosi da 54,98 a 1,34. Il risultato non è una distribuzione normale, cosa che nessun dato reale è mai, ma è abbastanza vicino alla simmetria da rendere difendibile l'apparato parametrico impiegato nelle fasi dalla 4 alla 8, e costituisce la giustificazione empirica della specificazione log-log adottata nella fase 7. Sul prezzo al metro quadro il logaritmo funziona addirittura meglio, portando l'asimmetria a −0,07.
+Applying the logarithm to price brings skewness down from 5.68 to 0.66 and kurtosis from 54.98 to 1.34. The result is not a normal distribution, which no real data ever is, but it is close enough to symmetry to make the parametric apparatus used in phases 4 to 8 defensible, and it constitutes the empirical justification for the log-log specification adopted in phase 7. On price per square metre the logarithm works even better, taking skewness to −0.07.
 
-Una nota di metodo chiude la fase. Con 16.346 osservazioni, i test formali di normalità come Shapiro-Wilk o D'Agostino rifiutano l'ipotesi nulla su qualunque dataset reale, perché la loro potenza nel rilevare anche una deviazione del tutto irrilevante è di fatto pari a uno. Per questo la fase si appoggia ai Q-Q plot e agli indici di forma anziché ai test, e dichiara esplicitamente il motivo di questa scelta invece di limitarsi a ometterli.
+A note on method closes the phase. With 16,346 observations, formal normality tests such as Shapiro-Wilk or D'Agostino reject the null hypothesis on any real dataset, because their power to detect even a wholly irrelevant departure is effectively one. For this reason the phase relies on Q-Q plots and shape statistics rather than on tests, and states the reason for that choice explicitly instead of simply omitting them.
 
 ### Phase 3 — Sampling & Confidence Intervals
 
-**Fase completata.** L'impostazione della fase consiste nel trattare i 16.346 annunci puliti come se fossero l'intera popolazione, di cui quindi si conoscono i parametri veri, e nell'estrarne dei campioni. In questo modo la stima ottenuta da ciascun campione e il valore reale sono effettivamente confrontabili, cosa che nella pratica statistica non accade quasi mai. Tutti i calcoli sono condotti su `price_per_mq`.
+**Phase complete.** The design of this phase consists in treating the 16,346 clean listings as if they were the entire population, whose true parameters are therefore known, and in drawing samples from it. In this way the estimate obtained from each sample and the real value are genuinely comparable, something that almost never happens in statistical practice. All the calculations are carried out on `price_per_mq`.
 
-- **Parametri di popolazione** (`population_parameters`): μ = **€ 5.621,55**/m², σ = **€ 2.644,29**/m². σ è calcolata con `ddof=0` — è una popolazione, non un campione, e il denominatore giusto è N.
-- **Distribuzione della media campionaria** (`draw_sample`): 1.000 campioni senza reinserimento per ciascuna numerosità n = 30, 100, 500, con l'istogramma delle 1.000 medie per ogni n.
-- **Errore standard empirico contro teorico**, nella stessa funzione: deviazione standard delle 1.000 medie a confronto con σ/√n.
-- **Intervalli di confidenza al 95%** con la distribuzione *t* e **verifica della copertura** (`confidence_intervals`): per ciascun n si costruiscono 1.000 intervalli — ognuno dalla sua media e dalla sua deviazione standard campionaria, come farebbe chi ha in mano un solo campione — e si conta quanti contengono davvero μ.
+- **Population parameters** (`population_parameters`): μ = **€ 5,621.55**/m², σ = **€ 2,644.29**/m². σ is computed with `ddof=0` — this is a population, not a sample, and the right denominator is N.
+- **Distribution of the sample mean** (`draw_sample`): 1,000 samples without replacement for each sample size n = 30, 100, 500, with a histogram of the 1,000 means for each n.
+- **Empirical against theoretical standard error**, in the same function: the standard deviation of the 1,000 means compared with σ/√n.
+- **95% confidence intervals** using the *t* distribution and a **coverage check** (`confidence_intervals`): for each n, 1,000 intervals are built — each from its own sample mean and sample standard deviation, as anyone holding a single sample would do — and it is counted how many actually contain μ.
 
-**Teorema del limite centrale in pratica**
+**The central limit theorem in practice**
 
-| n | SE empirico | σ/√n teorico |
+| n | empirical SE | theoretical σ/√n |
 |---|---|---|
-| 30 | € 482,82 | € 482,78 |
-| 100 | € 262,73 | € 264,43 |
-| 500 | € 120,82 | € 118,26 |
+| 30 | € 482.82 | € 482.78 |
+| 100 | € 262.73 | € 264.43 |
+| 500 | € 120.82 | € 118.26 |
 
-Le due colonne coincidono a meno di pochi euro, e per n = 30 le prime tre cifre sono addirittura identiche. Passando da n = 100 a n = 500 la dispersione si riduce esattamente del fattore radice di cinque previsto dalla teoria, e questo accade su una popolazione con asimmetria 1,83, dove la singola osservazione non è affatto distribuita normalmente. L'istogramma delle medie campionarie risulta invece simmetrico e campanulare già a n = 30: il teorema del limite centrale, qui, si vede all'opera anziché essere semplicemente citato.
+The two columns agree to within a few euros, and for n = 30 the first three digits are identical. Going from n = 100 to n = 500 the dispersion shrinks by exactly the factor of root five predicted by theory, and this happens on a population with skewness 1.83, where the individual observation is not remotely normally distributed. The histogram of the sample means, by contrast, is symmetric and bell-shaped already at n = 30: here the central limit theorem is seen at work rather than merely cited.
 
-Esisterebbe in realtà un termine di confronto più esatto. Poiché i campioni sono estratti senza reinserimento da una popolazione finita, la formula corretta sarebbe sigma diviso radice di n, moltiplicato per il fattore di correzione per popolazione finita, che a n = 500 porterebbe il valore teorico da 118,26 a 116,40 euro. La correzione risulta però trascurabile, perché n resta piccolo rispetto a una popolazione di 16.346 unità, e il confronto viene lasciato sulla formula standard perché è quella di cui la fase intende discutere.
+A more exact benchmark would in fact exist. Since the samples are drawn without replacement from a finite population, the correct formula would be sigma over root n multiplied by the finite population correction factor, which at n = 500 would take the theoretical value from 118.26 to 116.40 euros. The correction turns out to be negligible, because n stays small relative to a population of 16,346 units, and the comparison is left on the standard formula because that is the one the phase means to discuss.
 
-**Copertura degli intervalli**
+**Coverage of the intervals**
 
-| n | copertura osservata |
+| n | observed coverage |
 |---|---|
-| 30 | **94,2%** |
-| 100 | **93,8%** |
-| 500 | **94,5%** |
+| 30 | **94.2%** |
+| 100 | **93.8%** |
+| 500 | **94.5%** |
 
-Tutte e tre le coperture si collocano sotto il 95% nominale, ma leggere correttamente questa tabella richiede di sapere quanto vale il suo margine d'errore. Ogni copertura è essa stessa una stima, ricavata da mille ripetizioni, e il suo errore Monte Carlo vale circa sette decimi di punto. Le tre cifre risultano quindi compatibili sia fra loro sia con il 95%, il che significa che da questa singola esecuzione non si può concludere granché, e men che meno che n = 100 copra peggio di n = 30, che è quello che la tabella sembrerebbe suggerire.
+All three coverages sit below the nominal 95%, but reading this table correctly requires knowing how large its margin of error is. Each coverage is itself an estimate, obtained from a thousand repetitions, and its Monte Carlo error is worth about seven tenths of a point. The three figures are therefore compatible both with one another and with 95%, which means that not much can be concluded from this single run, and least of all that n = 100 covers worse than n = 30, which is what the table would appear to suggest.
 
-L'andamento vero si vede solo ripetendo l'intero esperimento. Su **sei serie indipendenti** da 1.000 intervalli ciascuna la copertura media risulta:
+The real pattern only becomes visible by repeating the whole experiment. Across **six independent series** of 1,000 intervals each, the mean coverage comes out as:
 
-| n | media di 6 serie | intervallo osservato |
+| n | mean of 6 series | observed range |
 |---|---|---|
-| 30 | **93,53%** | 93,0 – 93,9 |
-| 100 | 94,50% | 93,8 – 95,9 |
-| 500 | 95,17% | 94,5 – 96,2 |
+| 30 | **93.53%** | 93.0 – 93.9 |
+| 100 | 94.50% | 93.8 – 95.9 |
+| 500 | 95.17% | 94.5 – 96.2 |
 
-Con sei serie il quadro diventa leggibile. A n = 30 tutte e sei cadono fra 93,0 e 93,9 senza mai avvicinarsi al 95%, il che indica una sotto-copertura sistematica; la deviazione standard fra le serie, pari a 0,35 punti, è troppo piccola perché si possa trattare di rumore. A n = 500, invece, la media risale a 95,17%, cioè esattamente al valore nominale. Serve dunque un ordine di grandezza in più di ripetizioni perché emerga dal rumore ciò che una sola tabella non può mostrare. La spiegazione del fenomeno è quella attesa: l'intervallo costruito sulla distribuzione t assume una popolazione normale, mentre qui l'asimmetria vale 1,83 e a n = 30 il teorema del limite centrale non ha ancora finito il suo lavoro, cosicché l'intervallo mantiene meno di quanto promette. Resta però una spiegazione che la singola tabella iniziale non basta a dimostrare.
+With six series the picture becomes readable. At n = 30 all six fall between 93.0 and 93.9 without ever approaching 95%, which indicates systematic under-coverage; the standard deviation across series, at 0.35 points, is too small for this to be noise. At n = 500, by contrast, the mean climbs back to 95.17%, that is exactly the nominal value. An order of magnitude more repetitions is therefore needed for what a single table cannot show to emerge from the noise. The explanation of the phenomenon is the expected one: the interval built on the t distribution assumes a normal population, whereas here skewness is 1.83 and at n = 30 the central limit theorem has not yet finished its work, so the interval delivers less than it promises. It remains, though, an explanation that the initial single table is not enough to demonstrate.
 
-Questo è il risultato metodologico della fase, e vale più di una tabella di coperture ordinate: il livello di confidenza è una proprietà della procedura sotto le sue assunzioni, e misurarla richiede a sua volta abbastanza dati per distinguere il segnale dal rumore. Portare le ripetizioni da mille a diecimila ridurrebbe il margine d'errore a due decimi di punto e renderebbe la tabella leggibile per quello che sembra dire.
+This is the methodological result of the phase, and it is worth more than a tidy table of coverages: the confidence level is a property of the procedure under its assumptions, and measuring it requires, in turn, enough data to tell signal from noise. Taking the repetitions from a thousand to ten thousand would reduce the margin of error to two tenths of a point and would make the table readable for what it appears to say.
 
-Una nota sulla riproducibilità. Le funzioni `draw_sample` e `confidence_intervals` costruiscono ciascuna un generatore `np.random.default_rng(42)` e lo passano a ogni chiamata di `.sample(...)`, così che due esecuzioni consecutive producano un output identico riga per riga, cosa verificata. È essenziale che il generatore venga creato una volta sola fuori dal ciclo e lasciato avanzare: passare `random_state=42` direttamente a `.sample()` produrrebbe mille copie dello stesso campione, non mille campioni riproducibili.
+A note on reproducibility. The functions `draw_sample` and `confidence_intervals` each construct a `np.random.default_rng(42)` generator and pass it to every call of `.sample(...)`, so that two consecutive runs produce output identical line by line, which has been verified. It is essential that the generator be created once outside the loop and left to advance: passing `random_state=42` directly to `.sample()` would produce a thousand copies of the same sample, not a thousand reproducible samples.
 
 ### Phase 4 — Hypothesis Testing
 
-**Fase completata.** La fase conduce quattro confronti formali fra due campioni su `price_per_mq`, tutti bilaterali e con livello di significatività fissato a 0,05.
+**Phase complete.** The phase carries out four formal two-sample comparisons on `price_per_mq`, all two-tailed and with the significance level set at 0.05.
 
-Tutto l'apparato del test è raccolto in un'unica funzione riusabile, `two_sample_test(group_1, group_2)`, che restituisce il test di Levene, il t-test di Welch, i gradi di libertà, l'intervallo di confidenza al 95% per la differenza fra le medie e la d di Cohen. La funzione `hypothesis_testing` si limita a estrarre i gruppi e a chiamarla quattro volte, cosicché la logica statistica viene scritta e verificata una volta sola mentre i confronti restano dei semplici dati. I gradi di libertà di Welch–Satterthwaite e l'intervallo di confidenza sono calcolati esplicitamente a partire dalla formula anziché letti da un output già pronto, perché in questa fase costruire il test a mano è precisamente il punto dell'esercizio.
+The whole apparatus of the test is gathered into a single reusable function, `two_sample_test(group_1, group_2)`, which returns Levene's test, Welch's t-test, the degrees of freedom, the 95% confidence interval for the difference between the means and Cohen's d. The `hypothesis_testing` function merely extracts the groups and calls it four times, so that the statistical logic is written and verified once while the comparisons remain simple data. The Welch–Satterthwaite degrees of freedom and the confidence interval are computed explicitly from the formula rather than read off a ready-made output, because in this phase building the test by hand is precisely the point of the exercise.
 
-**Test 1 — due zone.**
+**Test 1 — two zones.**
 
-> **H₀**: μ(zona A) = μ(zona B) — il prezzo medio al m² è uguale nelle due zone
-> **H₁**: μ(zona A) ≠ μ(zona B) — bilaterale
+> **H₀**: μ(zone A) = μ(zone B) — the mean price per m² is the same in the two zones
+> **H₁**: μ(zone A) ≠ μ(zone B) — two-tailed
 
-Le due coppie sono state scelte apposta per contrasto. La prima mette a confronto zone lontanissime fra loro, dove l'esito del test è scontato e la quantità davvero interessante è la dimensione dell'effetto. La seconda confronta invece `Ripamonti, Vigentino` con `Porta Vittoria, Lodi`, due zone i cui centri distano 2,4 chilometri e che hanno numerosità quasi identiche: è qui che il test svolge un lavoro vero.
+The two pairs were chosen deliberately for contrast. The first compares zones that are very far apart, where the outcome of the test is a foregone conclusion and the genuinely interesting quantity is the size of the effect. The second compares `Ripamonti, Vigentino` with `Porta Vittoria, Lodi`, two zones whose centres are 2.4 kilometres apart and which have almost identical sample sizes: it is here that the test does real work.
 
 | | `Centro` vs `Bisceglie, Baggio, Olmi` | `Ripamonti, Vigentino` vs `Porta Vittoria, Lodi` |
 |---|---|---|
 | n | 389 vs 426 | 511 vs 518 |
-| media €/m² | 11.812 vs 3.301 | 4.953 vs 5.164 |
-| differenza | **+8.511** | **−211** |
-| t (Welch) | 38,90 | −2,26 |
-| gradi di libertà | 428,8 | 1.023,4 |
-| p | 9,6 × 10⁻¹⁴³ | **0,024** |
-| IC 95% della differenza | [8.081; 8.941] | **[−393; −28]** |
-| d di Cohen | **2,84** | **−0,14** |
-| Levene (p) | 5,7 × 10⁻⁶⁴ | 0,324 |
+| mean €/m² | 11,812 vs 3,301 | 4,953 vs 5,164 |
+| difference | **+8,511** | **−211** |
+| t (Welch) | 38.90 | −2.26 |
+| degrees of freedom | 428.8 | 1,023.4 |
+| p | 9.6 × 10⁻¹⁴³ | **0.024** |
+| 95% CI of the difference | [8,081; 8,941] | **[−393; −28]** |
+| Cohen's d | **2.84** | **−0.14** |
+| Levene (p) | 5.7 × 10⁻⁶⁴ | 0.324 |
 
-Le due colonne portano formalmente alla stessa conclusione, cioè il rifiuto dell'ipotesi nulla, ma non significano niente di simile.
+The two columns formally lead to the same conclusion, the rejection of the null hypothesis, and they mean nothing alike.
 
-Nella colonna di sinistra la d di Cohen vale 2,84, il che significa che le due distribuzioni sono separate da quasi tre deviazioni standard. In una situazione del genere il p-value è un numero privo di contenuto informativo, e la quantità che conta davvero è l'intervallo di confidenza, che colloca il divario fra 8.081 e 8.941 euro al metro quadro.
+In the left-hand column Cohen's d is 2.84, which means the two distributions are separated by almost three standard deviations. In a situation like that the p-value is a figure devoid of informative content, and the quantity that really matters is the confidence interval, which places the gap between 8,081 and 8,941 euros per square metre.
 
-Nella colonna di destra sta invece il risultato didattico della fase. Il p-value di 0,024 porta a rifiutare l'ipotesi nulla al livello del 5%, ma la d di Cohen vale −0,14, che secondo le convenzioni dello stesso Cohen è un effetto trascurabile, dato che la soglia per definirlo anche solo piccolo è 0,2. Soprattutto, l'intervallo di confidenza va da −393 a −28 euro al metro quadro, il che colloca il suo estremo superiore a soli 28 euro dallo zero. Tradotto su un appartamento di 80 metri quadri, il divario vero fra le due zone potrebbe valere 31.000 euro come 2.200: il test ha stabilito che le due zone non sono identiche, e nient'altro. È esattamente per questo che la dimensione dell'effetto e l'intervallo di confidenza compaiono accanto a ogni p-value, e non si tratta di un avvertimento astratto: con circa 500 osservazioni per gruppo, una differenza del quattro per cento basta a superare la soglia di significatività.
+In the right-hand column sits the didactic result of the phase. The p-value of 0.024 leads to rejecting the null hypothesis at the 5% level, but Cohen's d is −0.14, which by Cohen's own conventions is a negligible effect, given that the threshold for calling it even small is 0.2. Above all, the confidence interval runs from −393 to −28 euros per square metre, which places its upper end just 28 euros from zero. Translated onto an 80 m² flat, the true gap between the two zones could be worth 31,000 euros or 2,200: the test has established that the two zones are not identical, and nothing else. This is exactly why the effect size and the confidence interval appear next to every p-value, and it is not an abstract warning: with around 500 observations per group, a difference of four per cent is enough to clear the significance threshold.
 
-**Test 2 — una caratteristica dell'immobile.** Lo stesso apparato viene poi applicato a `elevator` e a `condition`, per mostrare che la verifica d'ipotesi non riguarda soltanto la geografia.
+**Test 2 — a property characteristic.** The same apparatus is then applied to `elevator` and to `condition`, to show that hypothesis testing does not concern geography alone.
 
-| | `elevator` sì vs no | `Da ristrutturare` vs `Ottimo / Ristrutturato` |
+| | `elevator` yes vs no | `Da ristrutturare` vs `Ottimo / Ristrutturato` |
 |---|---|---|
-| n | 12.367 vs 3.979 | 1.560 vs 7.004 |
-| media €/m² | 5.894 vs 4.773 | 5.160 vs 6.145 |
-| differenza | **+1.121** | **−984** |
-| t (Welch) | 26,13 | −14,28 |
-| gradi di libertà | 8.072,5 | 2.554,0 |
-| p | 1,6 × 10⁻¹⁴⁴ | 1,5 × 10⁻⁴⁴ |
-| IC 95% della differenza | [1.037; 1.205] | [−1.120; −849] |
-| d di Cohen | 0,43 | −0,37 |
-| Levene (p) | 4,8 × 10⁻¹⁹ | 1,1 × 10⁻⁴ |
+| n | 12,367 vs 3,979 | 1,560 vs 7,004 |
+| mean €/m² | 5,894 vs 4,773 | 5,160 vs 6,145 |
+| difference | **+1,121** | **−984** |
+| t (Welch) | 26.13 | −14.28 |
+| degrees of freedom | 8,072.5 | 2,554.0 |
+| p | 1.6 × 10⁻¹⁴⁴ | 1.5 × 10⁻⁴⁴ |
+| 95% CI of the difference | [1,037; 1,205] | [−1,120; −849] |
+| Cohen's d | 0.43 | −0.37 |
+| Levene (p) | 4.8 × 10⁻¹⁹ | 1.1 × 10⁻⁴ |
 
-Entrambi gli effetti risultano nettamente significativi e di dimensione media, con d pari a 0,43 e a −0,37, cioè un ordine di grandezza sopra quello della coppia di zone ravvicinate. Si tratta però di differenze grezze, calcolate senza alcun controllo: l'ascensore è più frequente negli edifici recenti e centrali, e gli immobili da ristrutturare sono sistematicamente più grandi e più vecchi. Quanto di quei 1.121 euro al metro quadro appartenga davvero all'ascensore, e non alla zona o al tipo di edificio in cui l'ascensore si trova, è una domanda che il t-test non può nemmeno porsi. Serve la regressione multipla della fase 8, dove le stesse variabili rientrano controllate per zona e superficie, e il confronto fra il coefficiente stimato lì e la differenza grezza riportata qui è uno dei risultati previsti della fase 9.
+Both effects come out clearly significant and of medium size, with d at 0.43 and −0.37, an order of magnitude above that of the pair of nearby zones. These are, however, raw differences computed without any control: lifts are more common in recent and central buildings, and properties in need of renovation are systematically larger and older. How much of those 1,121 euros per square metre really belongs to the lift, rather than to the zone or the type of building the lift stands in, is a question the t-test cannot even pose. The multiple regression of phase 8 is needed, where the same variables re-enter controlled for zone and floor area, and the comparison between the coefficient estimated there and the raw difference reported here is one of the expected results of phase 9.
 
-Vale la pena spiegare la scelta fra Levene e Welch. Il test di Levene rifiuta l'omogeneità delle varianze in tre casi su quattro, e lo fa in modo clamoroso nel confronto fra `Centro` e periferia, dove le deviazioni standard valgono 4.206 contro 1.009 e le due zone non hanno in comune nemmeno l'ordine di grandezza della dispersione. Soltanto per la coppia di zone ravvicinate il test non rifiuta, con p pari a 0,324.
+It is worth explaining the choice between Levene and Welch. Levene's test rejects the homogeneity of variances in three cases out of four, and it does so spectacularly in the comparison between `Centro` and the outskirts, where the standard deviations are 4,206 against 1,009 and the two zones do not even share an order of magnitude of dispersion. Only for the pair of nearby zones does the test fail to reject, with p at 0.324.
 
-Nonostante questo, il test di Welch viene usato in tutti e quattro i confronti. La ragione è semplice: quando le varianze sono davvero omogenee Welch coincide in pratica con Student, come si vede dal fatto che nella coppia ravvicinata i gradi di libertà scendono a 1.023,4 contro i 1.027 di Student, una differenza irrilevante; quando invece non lo sono, Student sbaglia. Un test che non costa nulla nel caso favorevole e che salva la situazione in quello sfavorevole non ha bisogno di essere scelto caso per caso. Si noti per contrasto il crollo dei gradi di libertà nel primo confronto, dove si passa a 428,8 contro gli 813 di Student: è Welch che sconta la varianza sproporzionata del `Centro`.
+Despite this, Welch's test is used in all four comparisons. The reason is simple: when the variances really are homogeneous Welch coincides in practice with Student, as can be seen from the fact that in the nearby pair the degrees of freedom fall to 1,023.4 against Student's 1,027, an irrelevant difference; when they are not, Student is wrong. A test that costs nothing in the favourable case and saves the day in the unfavourable one does not need to be chosen case by case. Note by contrast the collapse of the degrees of freedom in the first comparison, down to 428.8 against Student's 813: it is Welch discounting the disproportionate variance of `Centro`.
 
-La fase discute infine l'errore di primo tipo, cioè il rifiuto di un'ipotesi nulla vera, che corrisponde al cinque per cento di casi che si accettano fissando il livello di significatività; l'errore di secondo tipo; e il motivo per cui una numerosità elevata rende statisticamente significative differenze minuscole e prive di rilevanza pratica. Quest'ultimo punto, in questa fase, non è un'ipotesi teorica ma un risultato misurato, ed è la colonna di destra della prima tabella.
+The phase finally discusses the type I error, that is the rejection of a true null hypothesis, which corresponds to the five per cent of cases accepted by fixing the significance level; the type II error; and the reason why a large sample size makes statistically significant differences that are minuscule and of no practical relevance. This last point, in this phase, is not a theoretical hypothesis but a measured result, and it is the right-hand column of the first table.
 
 ### Phase 5 — ANOVA
 
-**Fase completata.** L'ANOVA è l'estensione naturale della fase 4 a tutte e 32 le macrozone considerate insieme, e viene condotta su 16.334 annunci, dato che i 12 privi del campo `macrozone` si autoescludono. La fase è composta da cinque funzioni orchestrate da `anova_phase`: `anova_analysis`, `welch_anova`, `residual_diagnostics`, `tukey_posthoc` e `plot_macrozone_boxplots`.
+**Phase complete.** The ANOVA is the natural extension of phase 4 to all 32 macro-zones considered together, and is carried out on 16,334 listings, since the 12 lacking a `macrozone` value exclude themselves. The phase consists of five functions orchestrated by `anova_phase`: `anova_analysis`, `welch_anova`, `residual_diagnostics`, `tukey_posthoc` and `plot_macrozone_boxplots`.
 
-> **H₀**: μ₁ = μ₂ = … = μ₃₂ — il prezzo medio al m² è uguale in ogni zona di Milano
-> **H₁**: almeno una zona differisce
+> **H₀**: μ₁ = μ₂ = … = μ₃₂ — the mean price per m² is the same in every zone of Milan
+> **H₁**: at least one zone differs
 
-**ANOVA a una via** (`anova_analysis`)
+**One-way ANOVA** (`anova_analysis`)
 
 | | |
 |---|---|
-| F | **658,07** |
-| gradi di libertà | 31; 16.302 |
-| p | < 10⁻³⁰⁰ (restituito come 0.0) |
-| η² | **0,556** |
+| F | **658.07** |
+| degrees of freedom | 31; 16,302 |
+| p | < 10⁻³⁰⁰ (returned as 0.0) |
+| η² | **0.556** |
 
-L'ipotesi nulla viene respinta senza margine di discussione, ma anche in questo caso il p-value è la parte meno interessante del risultato: con oltre sedicimila osservazioni e un rapporto di 3,6 volte fra la zona più cara e la più economica, nessun altro esito era concepibile. La quantità che porta informazione è l'eta quadro, pari a 0,556, il che significa che la sola appartenenza a una macrozona spiega il 55,6% della varianza del prezzo al metro quadro. Più della metà di ciò che distingue un annuncio da un altro, una volta tolta di mezzo la superficie, è dunque geografia: è il numero che giustifica tanto le dummy di zona della fase 8 quanto l'intero deliverable della fase 10. Anche l'eta quadro è calcolato a mano, come rapporto fra la devianza tra i gruppi e quella totale, anziché ripreso da un output già pronto.
+The null hypothesis is rejected without room for discussion, but here too the p-value is the least interesting part of the result: with over sixteen thousand observations and a ratio of 3.6 between the dearest and the cheapest zone, no other outcome was conceivable. The quantity that carries information is eta squared, at 0.556, which means that zone membership alone explains 55.6% of the variance in price per square metre. More than half of what distinguishes one listing from another, once floor area has been removed from the picture, is therefore geography: it is the figure that justifies both the zone dummies of phase 8 and the entire deliverable of phase 10. Eta squared too is computed by hand, as the ratio of between-group to total sum of squares, rather than taken from a ready-made output.
 
-**Verifica delle assunzioni** (`welch_anova`, `residual_diagnostics`)
+**Checking the assumptions** (`welch_anova`, `residual_diagnostics`)
 
-Il test di Levene restituisce una statistica di 89,40 con p praticamente nullo, il che indica che l'omogeneità delle varianze è violata in modo grossolano. Del resto lo lasciavano già prevedere le deviazioni standard calcolate per zona, che vanno dagli 826 euro di Forlanini ai 4.206 del Centro, un fattore cinque. Da qui la scelta di affiancare l'ANOVA di Welch, che non assume l'omogeneità: restituisce F = 451,70 con gradi di libertà pari a 31 e 4.249,0 e p ancora praticamente nullo. Le due statistiche F non sono confrontabili fra loro come numeri, perché Welch penalizza pesantemente i gradi di libertà del denominatore portandoli da 16.302 a 4.249, ma la conclusione non si sposta di un millimetro. È il caso in cui conviene dichiarare che l'assunzione è violata e che il risultato regge comunque, invece di dover scegliere fra le due affermazioni.
+Levene's test returns a statistic of 89.40 with p effectively zero, which indicates that the homogeneity of variances is violated grossly. This was already foreshadowed by the per-zone standard deviations, which run from the 826 euros of Forlanini to the 4,206 of Centro, a factor of five. Hence the decision to add Welch's ANOVA, which does not assume homogeneity: it returns F = 451.70 with degrees of freedom 31 and 4,249.0 and p still effectively zero. The two F statistics are not comparable with each other as numbers, because Welch penalises the denominator degrees of freedom heavily, taking them from 16,302 to 4,249, but the conclusion does not move a millimetre. It is the case in which it is best to state that the assumption is violated and that the result holds anyway, instead of having to choose between the two statements.
 
-Il grafico `charts/anova_residuals.png` mostra il fenomeno in forma visiva. Poiché i valori stimati sono soltanto 32, cioè le medie di gruppo, i residui si dispongono in 32 strisce verticali, e queste strisce si allargano progressivamente da sinistra a destra: attorno ai 4.000 euro al metro quadro i residui restano entro cinquemila euro, mentre attorno ai 12.000 sfiorano i quindicimila. Le zone care, in altre parole, non sono soltanto più care ma anche internamente più disomogenee. Il Q-Q plot dei residui conferma poi la coda destra pesante già nota dalla fase 2, il che significa che anche la normalità dei residui è violata; con 16.334 osservazioni, però, il teorema del limite centrale rende questa seconda violazione di scarsa conseguenza per il test F, a differenza dell'eteroschedasticità.
+The chart `charts/anova_residuals.png` shows the phenomenon visually. Since the fitted values are only 32, that is the group means, the residuals arrange themselves into 32 vertical stripes, and these stripes widen progressively from left to right: around 4,000 euros per square metre the residuals stay within five thousand euros, while around 12,000 they approach fifteen thousand. Expensive zones, in other words, are not only dearer but also internally less homogeneous. The Q-Q plot of the residuals then confirms the heavy right tail already known from phase 2, which means that the normality of the residuals is violated as well; with 16,334 observations, however, the central limit theorem makes this second violation of little consequence for the F test, unlike heteroskedasticity.
 
 **Post-hoc: Tukey HSD** (`tukey_posthoc`)
 
-Sulle 496 coppie possibili, 426 risultano significative, cioè l'86%, e 70 no. La correzione per confronti multipli è in questo caso obbligatoria: 496 t-test indipendenti condotti al livello del 5% produrrebbero per costruzione circa 25 falsi positivi, un numero pari a più di un terzo delle 70 coppie che qui restano non significative.
+Of the 496 possible pairs, 426 come out significant, that is 86%, and 70 do not. Correcting for multiple comparisons is mandatory here: 496 independent t-tests carried out at the 5% level would by construction produce about 25 false positives, a number equal to more than a third of the 70 pairs that remain non-significant here.
 
-L'effetto della correzione si vede meglio su un caso già noto — **la coppia ravvicinata della fase 4**:
+The effect of the correction is best seen on a case already known — the pair of nearby zones from phase 4:
 
-| | fase 4 (Welch, non corretto) | fase 5 (Tukey, corretto) |
+| | phase 4 (Welch, uncorrected) | phase 5 (Tukey, corrected) |
 |---|---|---|
-| `Ripamonti, Vigentino` vs `Porta Vittoria, Lodi` | p = **0,024** → rifiuto | p-adj = **0,992** → non rifiuto |
+| `Ripamonti, Vigentino` vs `Porta Vittoria, Lodi` | p = **0.024** → reject | p-adj = **0.992** → do not reject |
 
-La differenza è la stessa, 211 euro al metro quadro, i dati sono gli stessi, e la conclusione è opposta. Nella fase 4 quel confronto era l'unico posto in cui si stava guardando, mentre qui è uno dei 496 possibili, e il livello di confidenza viene ricalibrato di conseguenza: l'intervallo di Tukey si allarga fino a [−626; +205] e finisce per includere lo zero. Non è che uno dei due test sbagli, semplicemente rispondono a due domande diverse, e la distanza fra queste due domande è precisamente il problema dei confronti multipli.
+The difference is the same, 211 euros per square metre, the data are the same, and the conclusion is the opposite. In phase 4 that comparison was the only place being looked at, whereas here it is one of 496 possible ones, and the confidence level is recalibrated accordingly: the Tukey interval widens to [−626; +205] and ends up including zero. It is not that one of the two tests is wrong, they simply answer two different questions, and the distance between those two questions is precisely the multiple comparisons problem.
 
-Le coppie con lo scarto più ampio sono tutte confronti fra il `Centro`, oppure `Bisceglie, Baggio, Olmi`, e il resto della città; la massima è proprio quella fra queste due zone, con 8.511 euro al metro quadro di differenza, la stessa già misurata nella fase 4. All'estremo opposto, la più piccola differenza che sopravvive alla correzione vale 360 euro al metro quadro e riguarda `Famagosta, Barona` contro `Uptown, Cascina Merlata, Viale Certosa`, con p corretto pari a 0,027. Sotto quella soglia, con queste numerosità, il test di Tukey non distingue più.
+The pairs with the widest gap are all comparisons between `Centro`, or `Bisceglie, Baggio, Olmi`, and the rest of the city; the largest is the one between those two zones, at 8,511 euros per square metre, the same already measured in phase 4. At the opposite end, the smallest difference that survives the correction is worth 360 euros per square metre and concerns `Famagosta, Barona` against `Uptown, Cascina Merlata, Viale Certosa`, with adjusted p of 0.027. Below that threshold, at these sample sizes, Tukey's test no longer distinguishes.
 
-**Box plot per macrozona** (`plot_macrozone_boxplots`). Il grafico `charts/macrozone_boxplots.png` dispone le 32 zone in ordine di mediana crescente. È la controparte visiva del test, e mostra tre cose che la statistica F non dice.
+**Box plots by macro-zone** (`plot_macrozone_boxplots`). The chart `charts/macrozone_boxplots.png` arranges the 32 zones in order of increasing median. It is the visual counterpart of the test, and shows three things the F statistic does not.
 
-La prima è che la salita è continua: dalla mediana di 3.216 euro di `Bisceglie, Baggio, Olmi` fino agli 11.481 del `Centro` non compare nessun salto, nessuna soglia che separi un centro da una periferia. Sul prezzo al metro quadro, Milano è un gradiente e non due mercati distinti.
+The first is that the climb is continuous: from the median of 3,216 euros of `Bisceglie, Baggio, Olmi` up to the 11,481 of `Centro` no jump appears, no threshold separating a centre from a periphery. On price per square metre, Milan is a gradient and not two distinct markets.
 
-La seconda è che la prima dozzina di zone forma comunque un plateau: da `Bisceglie` fino a `Udine, Lambrate` le mediane stanno tutte fra 3.200 e 4.500 euro, cioè dodici zone diverse comprese in appena 1.300 euro, mentre le ultime quattro ne coprono da sole quasi duemila. È questa la ragione per cui le 70 coppie non significative del test di Tukey si concentrano quasi tutte in fondo alla classifica: lì le zone sono davvero vicine fra loro.
+The second is that the first dozen zones nonetheless form a plateau: from `Bisceglie` through to `Udine, Lambrate` the medians all sit between 3,200 and 4,500 euros, that is twelve different zones packed into barely 1,300 euros, while the last four cover almost two thousand on their own. This is why Tukey's 70 non-significant pairs are concentrated almost entirely at the bottom of the ranking: there the zones really are close to one another.
 
-La terza è che l'ampiezza delle scatole cresce insieme alla mediana: lo scarto interquartile di `Bisceglie` sta dentro il migliaio di euro, mentre quello del `Centro` supera i cinquemila. Si tratta della stessa eteroschedasticità già vista nel grafico dei residui, osservata però da un'altra angolazione, e ha una lettura concreta: comprare in centro non significa soltanto pagare di più, ma anche entrare in un mercato molto meno prevedibile.
+The third is that the width of the boxes grows along with the median: the interquartile range of `Bisceglie` fits within a thousand euros, while that of `Centro` exceeds five thousand. It is the same heteroskedasticity already seen in the residual chart, observed from another angle, and it has a concrete reading: buying in the centre means not only paying more, but entering a considerably less predictable market.
 
 ### Phase 6 — Correlation
 
-**Fase completata.** La fase misura le relazioni bivariate con `price`, e lo fa calcolando ciascuna relazione due volte, con Pearson e con Spearman. Le funzioni sono quattro, raccolte sotto `correlation_phase`: `prepare_correlation_data` codifica `condition` su una scala ordinale da 1 a 4, `correlation_analysis` calcola i due coefficienti con i rispettivi p-value, `correlation_matrix` produce una heatmap su tutte le coppie di variabili e `pearson_spearman_comparison` un grafico a barre affiancate.
+**Phase complete.** The phase measures the bivariate relationships with `price`, and does so by computing each relationship twice, with Pearson and with Spearman. There are four functions, gathered under `correlation_phase`: `prepare_correlation_data` encodes `condition` on an ordinal scale from 1 to 4, `correlation_analysis` computes the two coefficients with their p-values, `correlation_matrix` produces a heatmap over all pairs of variables and `pearson_spearman_comparison` a side-by-side bar chart.
 
-| variabile | Pearson | Spearman | scarto | n |
+| variable | Pearson | Spearman | gap | n |
 |---|---|---|---|---|
-| `surface_mq` | **0,789** | 0,763 | −0,026 | 16.346 |
-| `bathrooms` | 0,623 | 0,646 | +0,023 | 15.502 |
-| `rooms` | 0,547 | **0,646** | **+0,100** | 16.240 |
-| `floor` | 0,136 | 0,167 | +0,031 | 15.802 |
-| `condition_numeric` | **0,051** | 0,115 | +0,064 | 15.759 |
+| `surface_mq` | **0.789** | 0.763 | −0.026 | 16,346 |
+| `bathrooms` | 0.623 | 0.646 | +0.023 | 15,502 |
+| `rooms` | 0.547 | **0.646** | **+0.100** | 16,240 |
+| `floor` | 0.136 | 0.167 | +0.031 | 15,802 |
+| `condition_numeric` | **0.051** | 0.115 | +0.064 | 15,759 |
 
-Tutti i coefficienti risultano significativi, con p inferiore a 10⁻¹⁰, e per le prime tre variabili il p-value va addirittura in underflow e viene stampato come zero. Ma con circa sedicimila osservazioni la significatività non distingue nulla, esattamente come già accadeva nella fase 4. Quello che distingue è la magnitudine dei coefficienti, e soprattutto lo scarto fra le due colonne.
+All the coefficients come out significant, with p below 10⁻¹⁰, and for the first three variables the p-value even underflows and is printed as zero. But with around sixteen thousand observations significance distinguishes nothing, exactly as was already the case in phase 4. What does distinguish is the magnitude of the coefficients, and above all the gap between the two columns.
 
-**Dove Pearson e Spearman divergono, e perché**
+**Where Pearson and Spearman diverge, and why**
 
-Il caso più interessante è quello di `rooms`, dove i due coefficienti valgono 0,547 e 0,646, con dieci punti di differenza. La causa sta nel dato e non nella statistica: la variabile è troncata in alto, perché il valore `5+` della sorgente è stato mappato a 5, cosicché un attico da dieci locali e un quadrilocale grande finiscono per condividere lo stesso valore. Pearson, che lavora sui valori, viene penalizzato tanto da questo tetto artificiale quanto dalle code del prezzo, mentre Spearman, che lavora sui ranghi, ne risente molto meno. La relazione vera fra numero di locali e prezzo è quindi più forte di quanto Pearson dichiari, e l'unico modo di accorgersene è calcolarli entrambi.
+The most interesting case is that of `rooms`, where the two coefficients are 0.547 and 0.646, ten points apart. The cause lies in the data and not in the statistics: the variable is truncated from above, because the source's `5+` value was mapped to 5, so that a ten-room penthouse and a large four-room flat end up sharing the same value. Pearson, which works on the values, is penalised both by this artificial ceiling and by the tails of price, whereas Spearman, which works on ranks, is far less affected. The true relationship between number of rooms and price is therefore stronger than Pearson declares, and the only way to notice is to compute both.
 
-La superficie va invece nella direzione opposta, con 0,789 contro 0,763, ed è l'unico caso in cui Pearson supera Spearman. La relazione fra prezzo e superficie è infatti genuinamente quasi lineare sui valori, e i grandi immobili di lusso, che si collocano in coda su entrambe le variabili, rafforzano Pearson mentre in una graduatoria conterebbero quanto qualsiasi altra osservazione. È la conferma bivariata di ciò che la fase 7 andrà a modellare.
+Floor area goes in the opposite direction, at 0.789 against 0.763, and is the only case in which Pearson exceeds Spearman. The relationship between price and floor area is genuinely close to linear on the values, and the large luxury properties, which sit in the tail of both variables, reinforce Pearson while in a ranking they would count no more than any other observation. It is the bivariate confirmation of what phase 7 goes on to model.
 
-Il risultato negativo della fase riguarda `condition`, ed è più informativo di molti risultati positivi: il coefficiente di Pearson vale 0,051, cioè una correlazione praticamente nulla fra stato di conservazione e prezzo. Questo non significa che ristrutturare non paghi, ma che la scala ordinale da 1 a 4 non cattura la relazione. Nel dataset, infatti, gli immobili `Da ristrutturare` sono sistematicamente più grandi, con una media di 107,6 metri quadri contro i 90,9 di quelli in stato `Ottimo / Ristrutturato`, e sono concentrati nei quartieri storici: la penalizzazione dovuta allo stato e il premio dovuto a dimensione e posizione si elidono a vicenda, e sul prezzo totale non resta quasi nulla. La fase 4, che confrontava le stesse due categorie sul prezzo al metro quadro anziché sul prezzo assoluto, aveva invece trovato una differenza netta di 984 euro al metro quadro con d pari a −0,37. Stessa variabile, due misure diverse, due risposte opposte: è un caso da manuale del perché la variabile dipendente vada scelta prima di interpretare il coefficiente.
+The negative result of the phase concerns `condition`, and it is more informative than many positive ones: Pearson's coefficient is 0.051, that is a practically null correlation between state of repair and price. This does not mean that renovating does not pay, but that the ordinal scale from 1 to 4 fails to capture the relationship. In the dataset, properties marked `Da ristrutturare` are systematically larger, averaging 107.6 m² against the 90.9 of those in `Ottimo / Ristrutturato` condition, and are concentrated in the historic districts: the penalty for condition and the premium for size and location cancel each other out, and almost nothing is left on the total price. Phase 4, which compared the same two categories on price per square metre rather than on absolute price, had instead found a clear difference of 984 euros per square metre with d of −0.37. Same variable, two different measures, two opposite answers: it is a textbook case of why the dependent variable must be chosen before interpreting the coefficient.
 
-**Multicollinearità, in anticipo sulla fase 8**
+**Multicollinearity, ahead of phase 8**
 
-La heatmap in `charts/correlation_matrix.png` copre tutte le coppie di variabili, ma il blocco che conta davvero non è la riga del prezzo, bensì il triangolo delle correlazioni fra i predittori.
+The heatmap in `charts/correlation_matrix.png` covers all pairs of variables, but the block that really matters is not the price row, it is the triangle of correlations among the predictors.
 
 | | `surface_mq` | `rooms` | `bathrooms` |
 |---|---|---|---|
-| `surface_mq` | 1 | **0,751** | **0,726** |
-| `rooms` | 0,751 | 1 | **0,710** |
-| `bathrooms` | 0,726 | 0,710 | 1 |
+| `surface_mq` | 1 | **0.751** | **0.726** |
+| `rooms` | 0.751 | 1 | **0.710** |
+| `bathrooms` | 0.726 | 0.710 | 1 |
 
-Tre variabili correlate fra loro fra 0,71 e 0,75 stanno misurando in gran parte la stessa cosa, cioè quanto è grande l'immobile. È il problema di multicollinearità della fase 8 che diventa visibile per la prima volta, ed è il motivo per cui quella fase calcola i VIF anziché infilare tutte e tre le variabili nel modello e fidarsi. Merita attenzione anche il fatto che `rooms` correli con `surface_mq` a 0,751, cioè più fortemente di quanto correli con `price`, dove si ferma a 0,547: il numero di locali dice di più sulla metratura che sul prezzo.
+Three variables correlated with one another between 0.71 and 0.75 are largely measuring the same thing, namely how big the property is. This is the multicollinearity problem of phase 8 becoming visible for the first time, and it is why that phase computes VIFs rather than putting all three variables into the model and trusting to luck. It is also worth noting that `rooms` correlates with `surface_mq` at 0.751, that is more strongly than it correlates with `price`, where it stops at 0.547: the number of rooms says more about the floor area than about the price.
 
-Le variabili `condition_numeric` e `floor` sono invece scorrelate da tutto il resto, con correlazioni in valore assoluto non superiori a 0,14, il che le rende innocue nel modello multiplo: non spiegano molto, ma non disturbano nessun altro predittore.
+The variables `condition_numeric` and `floor` are by contrast uncorrelated with everything else, with correlations no greater than 0.14 in absolute value, which makes them harmless in the multiple model: they do not explain much, but they do not disturb any other predictor.
 
-I grafici della fase sono due. Il primo, `charts/correlation_matrix.png`, è una heatmap annotata con palette divergente centrata sullo zero, scelta in modo che il blocco caldo dei predittori dimensionali si stacchi a colpo d'occhio dalla fascia neutra di `condition` e `floor`. Il secondo, `charts/pearson_spearman_comparison.png`, affianca per ciascuna variabile le barre delle due misure: il divario di `rooms` è di gran lunga il più evidente, ed è anche il grafico che rende visibile come `rooms` e `bathrooms`, pur distanti secondo Pearson, arrivino alla stessa identica correlazione di rango di 0,646.
+The phase produces two charts. The first, `charts/correlation_matrix.png`, is an annotated heatmap with a diverging palette centred on zero, chosen so that the warm block of the size predictors stands out at a glance from the neutral band of `condition` and `floor`. The second, `charts/pearson_spearman_comparison.png`, places the bars of the two measures side by side for each variable: the gap for `rooms` is by far the most evident, and it is also the chart that makes visible how `rooms` and `bathrooms`, though far apart on Pearson, arrive at the identical rank correlation of 0.646.
 
-Che la correlazione non implichi causalità è un principio che qui trova un esempio concreto anziché uno slogan. La variabile `bathrooms` correla con il prezzo a 0,62, ma aggiungere un secondo bagno a un appartamento a Quarto Oggiaro non lo avvicina certo a Brera. Il numero di bagni è semplicemente un indicatore della presenza di immobili grandi, centrali e costosi, e non a caso correla con la superficie a 0,726, quasi quanto correla con il prezzo. Il fattore confondente è la dimensione e, soprattutto, la posizione, che la fase 5 ha appena stabilito spiegare da sola il 55,6% della varianza del prezzo al metro quadro. È esattamente per questo che la fase 8 introduce il controllo per la zona.
+That correlation does not imply causation is a principle that here finds a concrete example rather than a slogan. The variable `bathrooms` correlates with price at 0.62, but adding a second bathroom to a flat in Quarto Oggiaro certainly does not bring it closer to Brera. The number of bathrooms is simply an indicator of the presence of large, central and expensive properties, and it is no accident that it correlates with floor area at 0.726, almost as strongly as it correlates with price. The confounding factor is size and, above all, location, which phase 5 has just established explains 55.6% of the variance in price per square metre on its own. It is exactly for this reason that phase 8 introduces a control for the zone.
 
 ### Phase 7 — Linear Regression
 
-**Fase completata.** La fase stima due specificazioni diverse su tutti i 16.346 annunci. Le variabili `price` e `surface_mq` sono complete, e il filtro di positività richiesto dal logaritmo non scarta nulla, dato che i valori minimi sono 20.240 euro e 15 metri quadri. Le funzioni sono sette, raccolte sotto `linear_regression_phase`: tre per il modello semplice e tre per il log-log, ciascuna terna composta da stima, diagnostica dei residui e test di Breusch-Pagan.
+**Phase complete.** The phase estimates two different specifications on all 16,346 listings. The variables `price` and `surface_mq` are complete, and the positivity filter required by the logarithm discards nothing, since the minimum values are 20,240 euros and 15 square metres. There are seven functions, gathered under `linear_regression_phase`: three for the simple model and three for the log-log one, each trio made up of estimation, residual diagnostics and the Breusch-Pagan test.
 
-**Specificazione 1 — lineare** (`linear_regression`)
-
-```
-Price = −215.563 + 8.274 · Surface
-```
-
-| | |
-|---|---|
-| β₁ | **8.273,86** €/m² |
-| IC 95% di β₁ | [8.174,99; 8.372,73] |
-| t | 164,03 |
-| p | < 10⁻³⁰⁰ (stampato 0.0) |
-| R² | **0,622** |
-
-Ogni metro quadro aggiuntivo si porta dietro 8.274 euro di prezzo, e la superficie da sola spiega il 62,2% della varianza. Il coefficiente va però letto per quello che è: il metro quadro marginale costa 8.274 euro, mentre il metro quadro medio del dataset ne costa 5.622, come rilevato nella fase 1. Non si tratta di una contraddizione ma della stessa cosa detta due volte, e cioè che il prezzo al metro quadro cresce con la dimensione dell'immobile; la specificazione log-log discussa più avanti lo quantifica con precisione.
-
-L'intercetta, pari a −215.563 euro, non ha invece alcuna interpretazione sensata, perché corrisponde al prezzo che il modello attribuirebbe a un immobile di zero metri quadri. Il minimo osservato è di 15 metri quadri, quindi lo zero si trova lontano da qualunque dato reale e l'intercetta è soltanto il punto in cui la retta incrocia un asse che non descrive nessun immobile esistente. È il classico coefficiente che si riporta senza interpretarlo.
-
-**La diagnostica boccia il modello** (`linear_residual_diagnostics`, `breusch_pagan_test`)
-
-Il test di Breusch-Pagan restituisce una statistica LM di 2.743,0 con p praticamente nullo, e il grafico `charts/linear_regression_residuals.png` ne mostra il motivo nella forma più didattica possibile. I residui si aprono a ventaglio in modo perfetto: attorno a valori stimati di 200.000 euro restano entro poche decine di migliaia di euro, mentre oltre i quattro milioni arrivano a sei milioni in entrambe le direzioni. La varianza dell'errore non è dunque costante, e l'assunzione di omoschedasticità su cui poggia l'OLS è violata in modo plateale. Il Q-Q plot dei residui aggiunge una seconda violazione, con la classica forma a S che segnala code molto più pesanti di quelle di una normale.
-
-Le conseguenze sono precise e vale la pena esplicitarle. Il coefficiente β₁ = 8.274 resta corretto, perché l'eteroschedasticità non distorce la stima puntuale dell'OLS, ma il suo errore standard no: di conseguenza l'intervallo di confidenza [8.175; 8.373] e la statistica t pari a 164 sono inaffidabili. È precisamente il motivo per cui la fase 8 ricorrerà a errori standard robusti di tipo HC3.
-
-**Specificazione 2 — log-log** (`log_linear_regression`)
+**Specification 1 — linear** (`linear_regression`)
 
 ```
-log(Price) = 8,136 + 1,0913 · log(Surface)
+Price = −215,563 + 8,274 · Surface
 ```
 
 | | |
 |---|---|
-| β₁ (elasticità) | **1,0913** |
-| IC 95% di β₁ | **[1,0786; 1,1041]** |
-| t | 167,84 |
-| R² | 0,633 |
-| Breusch-Pagan | LM = **179,8**, p = 5,3 × 10⁻⁴¹ |
+| β₁ | **8,273.86** €/m² |
+| 95% CI of β₁ | [8,174.99; 8,372.73] |
+| t | 164.03 |
+| p | < 10⁻³⁰⁰ (printed as 0.0) |
+| R² | **0.622** |
 
-In questa specificazione β₁ è un'elasticità, il che significa che a un aumento dell'1% della superficie corrisponde un aumento dell'1,09% del prezzo. Il valore interessante non è però 1,09 in sé, bensì il suo confronto con l'unità: se il prezzo fosse proporzionale alla superficie, cioè se il prezzo al metro quadro fosse indipendente dalla dimensione, l'elasticità varrebbe esattamente 1. L'intervallo di confidenza, che va da 1,0786 a 1,1041, esclude l'unità con ampio margine. A Milano gli immobili grandi costano dunque più che proporzionalmente, e raddoppiare la superficie fa più che raddoppiare il prezzo. È il risultato principale della fase, e coincide con il fatto che la specificazione lineare esprimeva goffamente attraverso un'intercetta negativa.
+Every additional square metre brings 8,274 euros of price with it, and floor area alone explains 62.2% of the variance. The coefficient must, however, be read for what it is: the marginal square metre costs 8,274 euros, while the average square metre of the dataset costs 5,622, as measured in phase 1. This is not a contradiction but the same thing said twice, namely that price per square metre grows with the size of the property; the log-log specification discussed below quantifies it precisely.
 
-**Perché il log-log è preferito, e perché non per l'R²**
+The intercept, at −215,563 euros, has no sensible interpretation, because it corresponds to the price the model would assign to a property of zero square metres. The smallest observed is 15 square metres, so zero lies far away from any real data and the intercept is merely the point at which the line crosses an axis that describes no existing property. It is the classic coefficient one reports without interpreting.
 
-I due valori di R², 0,622 e 0,633, non sono confrontabili fra loro, perché misurano la varianza spiegata di due variabili dipendenti diverse, `price` nel primo caso e `log(price)` nel secondo. Metterli in classifica sarebbe un errore, ed è per questo che la preferenza per una delle due specificazioni non si argomenta su quel terreno.
+**The diagnostics fail the model** (`linear_residual_diagnostics`, `breusch_pagan_test`)
 
-La preferenza si argomenta invece sui residui. Il test di Breusch-Pagan rifiuta ancora, con p pari a 5 × 10⁻⁴¹, il che significa che la specificazione log-log non risolve l'eteroschedasticità ma la riduce. La statistica LM scende però da 2.743 a 180, cioè di un fattore quindici, e con 16.346 osservazioni il test rifiuterebbe comunque qualsiasi deviazione anche minima, come si era già visto a proposito dei test di normalità nella fase 2. È quindi il confronto fra le due magnitudini a portare informazione, non l'esito del test.
+The Breusch-Pagan test returns an LM statistic of 2,743.0 with p effectively zero, and the chart `charts/linear_regression_residuals.png` shows why in the most didactic form possible. The residuals fan out perfectly: around fitted values of 200,000 euros they stay within a few tens of thousands of euros, while beyond four million they reach six million in either direction. The variance of the error is therefore not constant, and the homoskedasticity assumption on which OLS rests is violated blatantly. The Q-Q plot of the residuals adds a second violation, with the classic S shape signalling tails much heavier than a normal's.
 
-Il grafico chiude poi la questione senza bisogno di ulteriori statistiche. In `charts/log_linear_regression_residuals.png` il ventaglio è scomparso, la nuvola dei residui presenta un'ampiezza pressoché costante su tutto l'intervallo dei valori stimati, e il Q-Q plot resta sulla diagonale quasi ovunque, con un lieve scostamento nella sola coda inferiore. Confrontato con la S marcata del modello lineare, si tratta di un'altra categoria di aderenza alle assunzioni.
+The consequences are precise and worth spelling out. The coefficient β₁ = 8,274 remains correct, because heteroskedasticity does not bias the OLS point estimate, but its standard error does not: consequently the confidence interval [8,175; 8,373] and the t statistic of 164 are unreliable. This is precisely why phase 8 turns to HC3 robust standard errors.
 
-La seconda specificazione è quindi quella preferita, ed è anche l'unica direttamente confrontabile con il modello completo della fase 8, che parte proprio da qui e vi aggiunge altri regressori.
+**Specification 2 — log-log** (`log_linear_regression`)
 
-**Grafico della retta.** Il file `charts/linear_regression.png` riporta la nuvola dei 16.346 punti con la retta OLS sovrapposta, in scala originale. Il ventaglio dei residui si intravede già qui, prima ancora di andare a guardare il grafico dedicato.
+```
+log(Price) = 8.136 + 1.0913 · log(Surface)
+```
+
+| | |
+|---|---|
+| β₁ (elasticity) | **1.0913** |
+| 95% CI of β₁ | **[1.0786; 1.1041]** |
+| t | 167.84 |
+| R² | 0.633 |
+| Breusch-Pagan | LM = **179.8**, p = 5.3 × 10⁻⁴¹ |
+
+In this specification β₁ is an elasticity, which means that a 1% increase in floor area corresponds to a 1.09% increase in price. The interesting value is not 1.09 in itself, however, but its comparison with unity: if price were proportional to floor area, that is if price per square metre were independent of size, the elasticity would be exactly 1. The confidence interval, running from 1.0786 to 1.1041, excludes unity by a wide margin. In Milan, therefore, large properties cost more than proportionally, and doubling the floor area more than doubles the price. It is the main result of the phase, and it coincides with the fact the linear specification expressed clumsily through a negative intercept.
+
+**Why the log-log is preferred, and why not on R²**
+
+The two R² values, 0.622 and 0.633, are not comparable with each other, because they measure the explained variance of two different dependent variables, `price` in the first case and `log(price)` in the second. Ranking them would be a mistake, and this is why the preference for one of the two specifications is not argued on that ground.
+
+The preference is argued on the residuals instead. The Breusch-Pagan test still rejects, with p at 5 × 10⁻⁴¹, which means the log-log specification does not solve heteroskedasticity but reduces it. The LM statistic, however, falls from 2,743 to 180, that is by a factor of fifteen, and with 16,346 observations the test would reject any departure however minimal, as was already seen with the normality tests in phase 2. It is therefore the comparison between the two magnitudes that carries information, not the outcome of the test.
+
+The chart then settles the matter without need of further statistics. In `charts/log_linear_regression_residuals.png` the fan has disappeared, the cloud of residuals has an almost constant width across the whole range of fitted values, and the Q-Q plot stays on the diagonal nearly everywhere, with a slight departure in the lower tail alone. Compared with the pronounced S of the linear model, this is another category of adherence to the assumptions.
+
+The second specification is therefore the preferred one, and it is also the only one directly comparable with the full model of phase 8, which starts from here and adds further regressors.
+
+**Chart of the fitted line.** The file `charts/linear_regression.png` shows the cloud of 16,346 points with the OLS line overlaid, in the original scale. The fan of residuals is already visible here, before turning to the dedicated chart.
 
 ### Phase 8 — Multiple Linear Regression
 
 ```
 log(Price) = β₀ + β₁·log(Surface) + β₂·Rooms + β₃·Bathrooms + β₄·Condition
-           + β₅·Elevator + β₆·Floor + β₇·Heating + β₈·Luxury + dummy di zona + ε
+           + β₅·Elevator + β₆·Floor + β₇·Heating + β₈·Luxury + zone dummies + ε
 ```
 
-**Fase completata.** Il modello è scritto in forma di formula tramite `sm.formula.ols`, cosicché le espressioni `C(macrozone)` e `C(heating)` generano da sole le rispettive variabili dummy: 31 per le macrozone e 2 per il riscaldamento, assumendo come riferimento la prima categoria in ordine alfabetico. La fase è composta da sette funzioni raccolte sotto `multiple_regression_phase`.
+**Phase complete.** The model is written in formula form through `sm.formula.ols`, so that the expressions `C(macrozone)` and `C(heating)` generate their own dummy variables: 31 for the macro-zones and 2 for heating, taking the first category in alphabetical order as the reference. The phase consists of seven functions gathered under `multiple_regression_phase`.
 
-**Il campione si restringe.** Poiché la regressione richiede tutte le variabili contemporaneamente, l'eliminazione delle righe incomplete costa 1.707 osservazioni, portando il campione da 16.346 a 14.639 righe, cioè il 10,4% in meno. È il prezzo cumulato dei valori mancanti sparsi su `bathrooms`, `condition` e `floor`, rispettivamente al 5,2%, 3,6% e 3,3%: la stima annunciata nella sezione sulla pulizia trova qui la sua misura effettiva. Tutti i numeri di questa fase valgono su quelle 14.639 righe, comprese le due specificazioni della tabella di confronto finale, che sono state rifittate sullo stesso sottoinsieme proprio perché AIC e R² risultino confrontabili.
+**The sample shrinks.** Since the regression requires all the variables at once, dropping incomplete rows costs 1,707 observations, taking the sample from 16,346 to 14,639 rows, that is 10.4% fewer. It is the cumulative price of the missing values scattered over `bathrooms`, `condition` and `floor`, at 5.2%, 3.6% and 3.3% respectively: the estimate announced in the cleaning section finds its actual measurement here. All the figures in this phase hold on those 14,639 rows, including the two specifications of the final comparison table, which were refitted on the same subset precisely so that AIC and R² come out comparable.
 
-**Multicollinearità: niente da rimuovere** (`vif_analysis`)
+**Multicollinearity: nothing to remove** (`vif_analysis`)
 
-| variabile | VIF |
+| variable | VIF |
 |---|---|
-| `log_surface` | **4,67** |
-| `rooms` | **4,17** |
-| `bathrooms` | 2,54 |
-| `luxury` | 1,26 |
-| `elevator` | 1,11 |
-| `floor` | 1,11 |
-| `condition_numeric` | 1,06 |
+| `log_surface` | **4.67** |
+| `rooms` | **4.17** |
+| `bathrooms` | 2.54 |
+| `luxury` | 1.26 |
+| `elevator` | 1.11 |
+| `floor` | 1.11 |
+| `condition_numeric` | 1.06 |
 
-La correlazione fra i tre predittori dimensionali osservata nella fase 6, compresa fra 0,71 e 0,75, si traduce in VIF di 4,67 e 4,17: valori alti, vicini alla soglia convenzionale di 5, ma comunque al di sotto di essa. Nessuna variabile viene quindi eliminata, e la tabella serve a documentare una decisione presa sulla base dei numeri anziché a giustificarne una già presa in partenza. Vale la pena essere espliciti sul significato di questi valori: un VIF di 4,67 indica che l'errore standard di `log_surface` è circa 2,2 volte quello che si avrebbe con predittori scorrelati. La collinearità, insomma, non è assente: è tollerata consapevolmente.
+The correlation among the three size predictors observed in phase 6, between 0.71 and 0.75, translates into VIFs of 4.67 and 4.17: high values, close to the conventional threshold of 5, but nonetheless below it. No variable is therefore removed, and the table serves to document a decision taken on the basis of the numbers rather than to justify one already taken. It is worth being explicit about what these values mean: a VIF of 4.67 indicates that the standard error of `log_surface` is about 2.2 times what it would be with uncorrelated predictors. Collinearity, in short, is not absent: it is knowingly tolerated.
 
-**Il modello completo** (`multiple_regression`)
+**The full model** (`multiple_regression`)
 
-| | coefficiente | p |
+| | coefficient | p |
 |---|---|---|
-| `log_surface` | **0,8019** | < 0,001 |
-| `luxury` | **0,3642** | < 0,001 |
-| `bathrooms` | 0,0893 | < 0,001 |
-| `condition_numeric` | 0,0811 | < 0,001 |
-| `elevator` | 0,0789 | < 0,001 |
-| `floor` | 0,0121 | < 0,001 |
-| `rooms` | −0,0018 | **0,593** |
-| `heating` autonomo | −0,0035 | **0,779** |
-| `heating` centralizzato | −0,0108 | **0,387** |
+| `log_surface` | **0.8019** | < 0.001 |
+| `luxury` | **0.3642** | < 0.001 |
+| `bathrooms` | 0.0893 | < 0.001 |
+| `condition_numeric` | 0.0811 | < 0.001 |
+| `elevator` | 0.0789 | < 0.001 |
+| `floor` | 0.0121 | < 0.001 |
+| `rooms` | −0.0018 | **0.593** |
+| `heating` autonomous | −0.0035 | **0.779** |
+| `heating` central | −0.0108 | **0.387** |
 
-**R² = 0,9062 · R² adjusted = 0,9059 · AIC = −4.441**
+**R² = 0.9062 · adjusted R² = 0.9059 · AIC = −4,441**
 
-I due valori di R² distano appena tre decimillesimi nonostante il modello impieghi circa quaranta regressori. Con 14.639 osservazioni la penalizzazione introdotta dall'aggiustamento è minima, e il confronto serve appunto a mostrare che in questo caso il rischio di sovradattamento non si materializza; con lo stesso numero di regressori e poche centinaia di osservazioni sarebbe andata diversamente.
+The two R² values are barely three ten-thousandths apart despite the model using around forty regressors. With 14,639 observations the penalty introduced by the adjustment is minimal, and the comparison serves precisely to show that in this case the risk of overfitting does not materialise; with the same number of regressors and a few hundred observations it would have gone differently.
 
-Trattandosi di una variabile dipendente logaritmica, i coefficienti si leggono come variazioni percentuali approssimate. Un bagno in più è associato a un prezzo superiore dell'8,9%, l'ascensore del 7,9%, un gradino nella scala di `condition` dell'8,1% e un piano più in alto dell'1,2%. Per il flag `luxury` l'approssimazione lineare non basta più e occorre la conversione esatta, che dà un premio del 44%.
+Since the dependent variable is logarithmic, the coefficients read as approximate percentage changes. One more bathroom is associated with a price 8.9% higher, a lift with 7.9%, one step up the `condition` scale with 8.1% and one floor higher with 1.2%. For the `luxury` flag the linear approximation no longer suffices and the exact conversion is required, which gives a premium of 44%.
 
-Merita attenzione il fatto che l'elasticità della superficie scenda da 1,09 a 0,80. Nella fase 7 `log_surface` era l'unico regressore e assorbiva quindi tutto ciò che correla con la dimensione dell'immobile, mentre qui `bathrooms` e `rooms` fanno parte del modello e se ne prendono una porzione. È lo stesso fenomeno già osservato nella fase 6, visto però dall'altro lato, ed è il motivo per cui il coefficiente di una regressione semplice e quello di una multipla non sono la stessa quantità: rispondono a domande diverse.
+It is worth noting that the elasticity of floor area falls from 1.09 to 0.80. In phase 7 `log_surface` was the only regressor and therefore absorbed everything correlated with the size of the property, whereas here `bathrooms` and `rooms` are part of the model and take a share of it. It is the same phenomenon already observed in phase 6, seen from the other side, and it is why the coefficient of a simple regression and that of a multiple one are not the same quantity: they answer different questions.
 
-**Che cosa cambia quando si controlla per la zona** (`zone_comparison`)
+**What changes when the zone is controlled for** (`zone_comparison`)
 
-Lo stesso modello stimato due volte, con e senza le dummy di macrozona:
+The same model estimated twice, with and without the macro-zone dummies:
 
-| | coef senza zona | p senza zona | coef con zona | p con zona |
+| | coef without zone | p without zone | coef with zone | p with zone |
 |---|---|---|---|---|
-| `log_surface` | 0,7813 | < 0,001 | 0,8019 | < 0,001 |
-| `luxury` | **0,6791** | < 0,001 | **0,3642** | < 0,001 |
-| `elevator` | **0,1196** | < 0,001 | **0,0789** | < 0,001 |
-| `condition_numeric` | 0,0589 | < 0,001 | 0,0811 | < 0,001 |
-| `bathrooms` | 0,0914 | < 0,001 | 0,0893 | < 0,001 |
-| `floor` | 0,0027 | 0,008 | 0,0121 | < 0,001 |
-| `rooms` | −0,0120 | **0,006** | −0,0018 | **0,593** |
-| `heating` centralizzato | −0,0401 | **0,012** | −0,0108 | **0,387** |
+| `log_surface` | 0.7813 | < 0.001 | 0.8019 | < 0.001 |
+| `luxury` | **0.6791** | < 0.001 | **0.3642** | < 0.001 |
+| `elevator` | **0.1196** | < 0.001 | **0.0789** | < 0.001 |
+| `condition_numeric` | 0.0589 | < 0.001 | 0.0811 | < 0.001 |
+| `bathrooms` | 0.0914 | < 0.001 | 0.0893 | < 0.001 |
+| `floor` | 0.0027 | 0.008 | 0.0121 | < 0.001 |
+| `rooms` | −0.0120 | **0.006** | −0.0018 | **0.593** |
+| `heating` central | −0.0401 | **0.012** | −0.0108 | **0.387** |
 
-L'R² aggiustato passa da 0,8458 senza le dummy di zona a 0,9059 con esse: le sole dummy di macrozona aggiungono quindi sei punti di varianza spiegata a un modello che ne spiegava già l'85%.
+The adjusted R² goes from 0.8458 without the zone dummies to 0.9059 with them: the macro-zone dummies alone therefore add six points of explained variance to a model that already explained 85%.
 
-Nel passaggio due predittori perdono la significatività, ed è il risultato più istruttivo della fase.
+In the transition two predictors lose their significance, and it is the most instructive result of the phase.
 
-- **`rooms`** passa da p = 0,006 a p = 0,593. A parità di superficie, il numero di locali sembrava dire qualcosa sul prezzo; una volta noto il quartiere non dice più niente. Stava funzionando da indicatore di localizzazione — appartamenti tagliati in molte stanze piccole sono tipici di certe zone — non da caratteristica con un valore proprio.
-- **`heating` centralizzato** passa da p = 0,012 a p = 0,387, per la stessa ragione: il riscaldamento centralizzato è una caratteristica dei condomini di certe epoche e certi quartieri.
+- **`rooms`** goes from p = 0.006 to p = 0.593. For a given floor area, the number of rooms appeared to say something about price; once the neighbourhood is known it says nothing at all. It was acting as an indicator of location — flats carved into many small rooms are typical of certain areas — rather than as a characteristic with a value of its own.
+- **`heating` central** goes from p = 0.012 to p = 0.387, for the same reason: central heating is a feature of apartment blocks of certain periods and certain neighbourhoods.
 
-Altri due coefficienti si ridimensionano senza perdere significatività: `luxury` quasi si dimezza, passando da 0,679 a 0,364, ed `elevator` cala di circa un terzo, da 0,120 a 0,079. Metà del premio associato al lusso era, letteralmente, il quartiere.
+Two other coefficients shrink without losing significance: `luxury` almost halves, going from 0.679 to 0.364, and `elevator` falls by about a third, from 0.120 to 0.079. Half of the premium associated with luxury was, literally, the neighbourhood.
 
-Un coefficiente si muove infine nella direzione opposta: `floor` quadruplica, passando da 0,0027 a 0,0121, e il suo p-value scende da 0,008 a meno di 0,001. Senza il controllo per la zona l'effetto del piano risultava mascherato, perché i palazzi alti si trovano tanto nei quartieri più cari quanto nelle periferie di edilizia popolare e i due gruppi si annullavano a vicenda. È il caso in cui l'introduzione di un controllo non riduce un effetto ma lo rivela.
+One coefficient finally moves in the opposite direction: `floor` quadruples, going from 0.0027 to 0.0121, and its p-value drops from 0.008 to below 0.001. Without the control for zone the effect of the floor was masked, because tall buildings are found both in the dearest neighbourhoods and in the social-housing outskirts and the two groups cancelled each other out. It is the case in which introducing a control does not shrink an effect but reveals it.
 
-**Errori standard robusti** (`robust_standard_errors`)
+**Robust standard errors** (`robust_standard_errors`)
 
-Lo stesso modello viene rifittato con `cov_type='HC3'`. Gli errori standard salgono, come era atteso dopo il test di Breusch-Pagan della fase 7: per `log_surface` passano da 0,0072 a 0,0091, con un aumento del 26%, e per l'intercetta da 0,0285 a 0,0385, con un aumento del 35%. Le variabili dotate di coefficienti forti non si spostano di una virgola nelle conclusioni, mentre le due categorie di `heating`, già non significative, lo diventano ancora di più, con il p-value che passa da 0,779 a 0,841. Nessuna conclusione della fase dipende quindi dalla scelta fra errori standard classici e robusti, ed è esattamente questa l'informazione che l'analisi doveva produrre: non che gli HC3 siano migliori in astratto, ma che in questo caso non cambiano la risposta.
+The same model is refitted with `cov_type='HC3'`. The standard errors rise, as was to be expected after the Breusch-Pagan test of phase 7: for `log_surface` they go from 0.0072 to 0.0091, an increase of 26%, and for the intercept from 0.0285 to 0.0385, an increase of 35%. The variables with strong coefficients do not shift by a comma in their conclusions, while the two `heating` categories, already non-significant, become even more so, with the p-value going from 0.779 to 0.841. No conclusion of the phase therefore depends on the choice between classical and robust standard errors, and this is exactly the information the analysis needed to produce: not that HC3 is better in the abstract, but that here it does not change the answer.
 
-**Residui** (`multiple_residual_diagnostics`) — `charts/multiple_regression_residuals.png`
+**Residuals** (`multiple_residual_diagnostics`) — `charts/multiple_regression_residuals.png`
 
-La nuvola dei residui contro i valori stimati presenta un'ampiezza sostanzialmente costante da un log-prezzo di 12 fino a 15, senza alcuna traccia del ventaglio osservato nella fase 7. Il Q-Q plot resta sulla diagonale per tutta la parte centrale, con uno scostamento nella coda sinistra che corrisponde a un gruppo di immobili nettamente sopravvalutati dal modello, cioè annunci molto più economici di quanto le loro caratteristiche e la loro zona facciano prevedere. Si tratta di poche decine di casi su 14.639, che non minacciano le stime, ma costituiscono l'unico residuo di struttura non spiegata rimasto.
+The cloud of residuals against fitted values has a substantially constant width from a log-price of 12 up to 15, with no trace of the fan seen in phase 7. The Q-Q plot stays on the diagonal throughout the central portion, with a departure in the left tail corresponding to a group of properties the model clearly overvalues, that is listings far cheaper than their characteristics and their zone would predict. These are a few dozen cases out of 14,639, which do not threaten the estimates, but they constitute the only residue of unexplained structure left.
 
-**Confronto fra modelli** (`model_comparison`)
+**Model comparison** (`model_comparison`)
 
-| modello | R² adjusted | AIC |
+| model | adjusted R² | AIC |
 |---|---|---|
-| log-log semplice | 0,6554 | 14.531,0 |
-| multiplo completo | **0,9059** | **−4.441,2** |
+| simple log-log | 0.6554 | 14,531.0 |
+| full multiple | **0.9059** | **−4,441.2** |
 
-Entrambi i modelli sono stimati sulle stesse 14.639 righe e sulla stessa variabile dipendente `log_price`, che è la condizione necessaria perché il confronto abbia senso. È anche il motivo per cui il modello lineare della fase 7 non compare in tabella: la sua variabile dipendente è `price`, e un AIC calcolato su una scala diversa non sarebbe confrontabile. Il salto è netto su entrambi i criteri, dato che la varianza spiegata passa dal 66% al 91% e i circa diciannovemila punti di AIC in meno indicano che l'aggiunta dei regressori paga ampiamente il costo della maggiore complessità.
+Both models are estimated on the same 14,639 rows and on the same dependent variable `log_price`, which is the necessary condition for the comparison to make sense. It is also the reason why the linear model of phase 7 does not appear in the table: its dependent variable is `price`, and an AIC computed on a different scale would not be comparable. The jump is clear on both criteria, since explained variance goes from 66% to 91% and the roughly nineteen thousand fewer AIC points indicate that adding the regressors amply pays for the extra complexity.
 
-**Una promessa che i dati non consentono di mantenere.** Le versioni precedenti di questo README prevedevano un'analisi di sensibilità su `elevator`, da condurre rifittando il modello sul sottoinsieme delle 13.572 righe con il campo effettivamente compilato. Quel test non è però eseguibile: nella sorgente la variabile vale `1.0` oppure `NaN` e mai `0`, quindi il sottoinsieme con il campo compilato contiene esclusivamente immobili dotati di ascensore. In assenza di variazione il coefficiente non è identificabile e la variabile verrebbe semplicemente scartata dalla stima. Il ragionamento sulla codifica resta valido, perché l'errore di classificazione può solo attenuare β verso lo zero e quindi 0,0789 è semmai una sottostima, ma si tratta di un'argomentazione e non di una verifica empirica, e viene qui dichiarata come tale.
+**A promise the data do not allow us to keep.** Earlier versions of this README planned a sensitivity analysis on `elevator`, to be carried out by refitting the model on the subset of 13,572 rows with the field actually filled in. That test is not, however, executable: in the source the variable is either `1.0` or `NaN` and never `0`, so the subset with the field filled in contains exclusively properties equipped with a lift. In the absence of variation the coefficient is not identifiable and the variable would simply be dropped from the estimation. The reasoning about the encoding remains valid, because misclassification can only attenuate β towards zero and therefore 0.0789 is if anything an underestimate, but it is an argument and not an empirical check, and it is declared here as such.
 
 ### Phase 9 — Statistical Conclusions
 
-**Fase completata.** La fase non produce alcuna nuova stima: riusa il modello già stimato nella fase 8, che `multiple_regression_phase` restituisce insieme al frame dei dati, e ne ricava la tabella su cui vengono scritte le conclusioni. Le funzioni sono tre: `conclusions_table` costruisce coefficienti, intervalli di confidenza al 95%, p-value e flag di significatività; la partizione fra predittori significativi e non significativi avviene dentro `conclusions_phase`; e `zone_variance_share` quantifica il contributo della zona.
+**Phase complete.** The phase produces no new estimate: it reuses the model already fitted in phase 8, which `multiple_regression_phase` returns together with the data frame, and derives from it the table on which the conclusions are written. There are three functions: `conclusions_table` builds coefficients, 95% confidence intervals, p-values and significance flags; the split between significant and non-significant predictors happens inside `conclusions_phase`; and `zone_variance_share` quantifies the contribution of the zone.
 
-**I predittori, con il loro intervallo di confidenza**
+**The predictors, with their confidence intervals**
 
-| predittore | β | IC 95% | significativo a α = 0,05 |
+| predictor | β | 95% CI | significant at α = 0.05 |
 |---|---|---|---|
-| `log_surface` | **0,8019** | [0,7878; 0,8160] | ✅ |
-| `luxury` | **0,3642** | [0,3526; 0,3757] | ✅ |
-| `bathrooms` | 0,0893 | [0,0806; 0,0980] | ✅ |
-| `condition_numeric` | 0,0811 | [0,0769; 0,0853] | ✅ |
-| `elevator` | 0,0789 | [0,0699; 0,0878] | ✅ |
-| `floor` | 0,0121 | [0,0105; 0,0137] | ✅ |
-| `rooms` | −0,0018 | [−0,0086; 0,0049] | ❌ |
-| `heating` autonomo | −0,0035 | [−0,0283; 0,0212] | ❌ |
-| `heating` centralizzato | −0,0108 | [−0,0353; 0,0137] | ❌ |
+| `log_surface` | **0.8019** | [0.7878; 0.8160] | ✅ |
+| `luxury` | **0.3642** | [0.3526; 0.3757] | ✅ |
+| `bathrooms` | 0.0893 | [0.0806; 0.0980] | ✅ |
+| `condition_numeric` | 0.0811 | [0.0769; 0.0853] | ✅ |
+| `elevator` | 0.0789 | [0.0699; 0.0878] | ✅ |
+| `floor` | 0.0121 | [0.0105; 0.0137] | ✅ |
+| `rooms` | −0.0018 | [−0.0086; 0.0049] | ❌ |
+| `heating` autonomous | −0.0035 | [−0.0283; 0.0212] | ❌ |
+| `heating` central | −0.0108 | [−0.0353; 0.0137] | ❌ |
 
-Sei predittori su nove risultano significativi. Il modo in cui questa fase riporta i risultati passa però dagli intervalli di confidenza e non dai p-value, perché l'intervallo dice quanto vale l'effetto e con quale precisione, mentre il p-value si limita a dire se l'effetto è distinguibile da zero. È la stessa distinzione su cui la fase 4 aveva già insistito discutendo la coppia di zone ravvicinate.
+Six predictors out of nine come out significant. The way this phase reports results, however, runs through confidence intervals rather than p-values, because the interval says how large the effect is and with what precision, whereas the p-value merely says whether the effect is distinguishable from zero. It is the same distinction phase 4 had already insisted on when discussing the pair of nearby zones.
 
-**Le conclusioni, nella forma in cui vanno scritte**
+**The conclusions, in the form in which they should be written**
 
-> La **superficie** presenta una relazione positiva e statisticamente significativa con il prezzo (β = 0,802, IC 95% [0,788; 0,816], p < 0,001). Dopo aver controllato per le altre caratteristiche dell'immobile **e per la zona**, resta di gran lunga il predittore più forte: un aumento dell'1% della superficie è associato a un aumento dello **0,80%** del prezzo, a parità di tutto il resto.
+> **Floor area** shows a positive and statistically significant relationship with price (β = 0.802, 95% CI [0.788; 0.816], p < 0.001). After controlling for the other characteristics of the property **and for the zone**, it remains by far the strongest predictor: a 1% increase in floor area is associated with a **0.80%** increase in price, all else equal.
 
-> Il flag **lusso** è associato a un prezzo superiore del **44%** (β = 0,364, IC 95% [0,353; 0,376], p < 0,001) rispetto a un immobile con le stesse caratteristiche e nella stessa zona. Senza controllo di zona lo stesso coefficiente valeva 0,679, cioè un premio del 97%: **più della metà di quello che sembra un premio di lusso è in realtà il quartiere**.
+> The **luxury** flag is associated with a price **44% higher** (β = 0.364, 95% CI [0.353; 0.376], p < 0.001) than a property with the same characteristics in the same zone. Without the zone control the same coefficient was 0.679, that is a premium of 97%: **more than half of what looks like a luxury premium is in fact the neighbourhood**.
 
-> Un **bagno** aggiuntivo è associato a un prezzo superiore del **9,3%** (β = 0,089, IC 95% [0,081; 0,098], p < 0,001), un gradino nella scala dello **stato di conservazione** all'**8,4%** (β = 0,081, IC 95% [0,077; 0,085]), la presenza dell'**ascensore** all'**8,2%** (β = 0,079, IC 95% [0,070; 0,088]) e ogni **piano** di altezza all'**1,2%** (β = 0,012, IC 95% [0,011; 0,014]). Le percentuali sono e^β − 1; per la superficie, che entra in logaritmo, β è direttamente un'elasticità e la conversione non si applica.
+> An additional **bathroom** is associated with a price **9.3% higher** (β = 0.089, 95% CI [0.081; 0.098], p < 0.001), one step up the **state of repair** scale with **8.4%** (β = 0.081, 95% CI [0.077; 0.085]), the presence of a **lift** with **8.2%** (β = 0.079, 95% CI [0.070; 0.088]) and each **floor** higher up with **1.2%** (β = 0.012, 95% CI [0.011; 0.014]). The percentages are e^β − 1; for floor area, which enters in logarithms, β is directly an elasticity and the conversion does not apply.
 
-> Il **numero di locali** non presenta un'associazione significativa con il prezzo una volta controllate superficie, bagni e zona (β = −0,002, IC 95% [−0,009; 0,005], p = 0,593). Lo stesso vale per il **tipo di riscaldamento** (p = 0,779 e p = 0,387). Nel caso dei locali la conclusione è più forte di un semplice "non significativo": l'intervallo di confidenza colloca l'effetto vero fra **−0,9% e +0,5%**, cioè lo esclude in entrambe le direzioni. Non è ignoranza sull'effetto, è la constatazione che è trascurabile.
+> The **number of rooms** shows no significant association with price once floor area, bathrooms and zone are controlled for (β = −0.002, 95% CI [−0.009; 0.005], p = 0.593). The same holds for the **type of heating** (p = 0.779 and p = 0.387). In the case of rooms the conclusion is stronger than a simple "not significant": the confidence interval places the true effect between **−0.9% and +0.5%**, ruling it out in both directions. This is not ignorance about the effect, it is the finding that the effect is negligible.
 
-**Quanto pesa la posizione** (`zone_variance_share`)
+**How much location weighs** (`zone_variance_share`)
 
-| | R² adjusted |
+| | adjusted R² |
 |---|---|
-| modello senza dummy di zona | 0,8458 |
-| modello con dummy di zona | 0,9059 |
-| **differenza** | **+0,0602** |
+| model without zone dummies | 0.8458 |
+| model with zone dummies | 0.9059 |
+| **difference** | **+0.0602** |
 
-Le dummy di zona aggiungono sei punti di varianza spiegata a un modello che ne spiegava già l'84,6%. Il numero va letto insieme a quello della fase 5, dove la macrozona da sola spiegava il 55,6% della varianza del prezzo al metro quadro: i due risultati non si contraddicono, ma rispondono a due domande diverse. Alla domanda su quanto spieghi la posizione presa da sola la risposta è moltissimo; alla domanda su quanto aggiunga a chi conosce già superficie, bagni, stato e piano dell'immobile la risposta è sei punti. La ragione è che una parte dell'informazione geografica è già contenuta nelle caratteristiche stesse degli immobili, dato che quelli grandi e ristrutturati sono distribuiti in modo tutt'altro che uniforme sulla città.
+The zone dummies add six points of explained variance to a model that already explained 84.6%. The figure should be read together with the one from phase 5, where the macro-zone alone explained 55.6% of the variance in price per square metre: the two results do not contradict each other, they answer two different questions. To the question of how much location explains taken on its own, the answer is a great deal; to the question of how much it adds for someone who already knows the floor area, bathrooms, condition and floor of the property, the answer is six points. The reason is that part of the geographic information is already contained in the characteristics of the properties themselves, since the large, renovated ones are distributed anything but uniformly across the city.
 
-**I limiti, dichiarati senza giri di parole**
+**The limits, stated without hedging**
 
-- Si tratta di **prezzi richiesti**, non di prezzi di transazione. A Milano lo scarto fra richiesta e rogito è reale e non è costante fra le zone, quindi non è nemmeno un errore che si annulla nei confronti.
-- Gli annunci sono un'**istantanea**. Niente di quanto affermato qui riguarda un andamento nel tempo, e i coefficienti non dicono nulla su come si muoveranno i prezzi.
-- Tutto è **associativo**. Nessuna pretesa causale viene avanzata, e nessuna è ottenibile da questo disegno: β = 0,079 sull'ascensore non significa che installarne uno faccia salire il prezzo dell'8,2%, ma che gli immobili con ascensore costano in media l'8,2% in più di immobili altrimenti simili. La differenza non è formale — chi ha l'ascensore ha anche, sistematicamente, un edificio di un certo tipo.
-- Il modello gira su **14.639 annunci su 16.346**: il 10,4% è escluso dalla listwise deletion, e chi ha i campi incompleti non è un campione casuale degli annunci.
-- Restano **assunzioni violate ma dichiarate**: l'eteroschedasticità è ridotta e non eliminata (per questo gli HC3), e i residui hanno una coda sinistra pesante.
+- These are **asking prices**, not transaction prices. In Milan the gap between asking price and completion is real and is not constant across zones, so it is not even an error that cancels out in comparisons.
+- The listings are a **snapshot**. Nothing asserted here concerns a movement over time, and the coefficients say nothing about how prices will move.
+- Everything is **associative**. No causal claim is made, and none is obtainable from this design: β = 0.079 on the lift does not mean that installing one raises the price by 8.2%, but that properties with a lift cost on average 8.2% more than otherwise similar properties. The difference is not a formality — a property with a lift also has, systematically, a building of a certain kind.
+- The model runs on **14,639 listings out of 16,346**: 10.4% are excluded by listwise deletion, and those with incomplete fields are not a random sample of the listings.
+- Some **assumptions remain violated but declared**: heteroskedasticity is reduced and not eliminated (hence the HC3 errors), and the residuals have a heavy left tail.
 
-### Phase 10 — Mappa del prezzo per zona
+### Phase 10 — Map of price by zone
 
-**Fase completata.** Il deliverable finale: **`milano-3d.html`**, mappa interattiva degli 88 NIL di Milano (*Nuclei d'Identità Locale*), in due viste e con due variabili di prezzo. Nove funzioni orchestrate da `map_phase`. `milano-heatmap.html` resta nel repository come mappa di riferimento da cui è partito il lavoro: non è un output di questa fase e i suoi aggregati non sono quelli calcolati qui.
+**Phase complete.** The final deliverable: **`milano-3d.html`**, an interactive map of the 88 NIL of Milan (*Nuclei d'Identità Locale*, the official city zones), in two views and with two price variables. Nine functions orchestrated by `map_phase`. `milano-heatmap.html` remains in the repository as the reference map the work started from: it is not an output of this phase and its aggregates are not the ones computed here.
 
-**Il point-in-polygon non è servito.** Il piano iniziale prevedeva di assegnare ogni annuncio a una zona per intersezione geometrica, dal momento che le 144 microzone e le 32 macrozone presenti nel CSV non coincidono con gli 88 NIL. Il CSV porta però già una colonna `nil_id`, e la verifica di compatibilità è risultata netta: 88 identificativi in comune con il GeoJSON e zero nomi discordanti. L'assegnazione si riduce quindi a un `groupby('nil_id')`, senza bisogno di aggiungere `shapely` o `geopandas` fra le dipendenze. La riga della tabella del dataset che dichiarava `nil_id` come inutilizzata è stata corretta di conseguenza.
+**Point-in-polygon was not needed.** The original plan was to assign each listing to a zone by geometric intersection, since the 144 microzones and 32 macro-zones present in the CSV do not coincide with the 88 NIL. The CSV, however, already carries a `nil_id` column, and the compatibility check came out clean: 88 identifiers in common with the GeoJSON and zero mismatched names. The assignment therefore reduces to a `groupby('nil_id')`, without needing to add `shapely` or `geopandas` to the dependencies. The row of the dataset table declaring `nil_id` unused has been corrected accordingly.
 
 | | |
 |---|---|
-| annunci con zona | **16.333** su 16.346 (13 senza coordinate) |
-| zone con almeno un annuncio | 87 su 88 — Stephenson non ne ha nessuno |
-| zone rappresentate | **78** |
-| zone soppresse | **9**, da 1 a 9 annunci ciascuna |
+| listings with a zone | **16,333** out of 16,346 (13 without coordinates) |
+| zones with at least one listing | 87 out of 88 — Stephenson has none |
+| zones represented | **78** |
+| zones suppressed | **9**, with 1 to 9 listings each |
 
-**La soppressione delle zone piccole.** Colorare una zona significa affermare qualcosa sul suo prezzo, e una media costruita su quattro osservazioni non è confrontabile con una costruita su 834. La soglia è stata fissata a dieci annunci: al di sotto, il blocco resta grigio e piatto e il tooltip riporta la dicitura "dati insufficienti" anziché un numero. Non si tratta di una scelta neutra, e costituisce l'unico punto rimasto aperto della fase: nove zone della città non dicono nulla, e la decisione fra attribuire loro un valore contraendolo verso la media cittadina, abbassare la soglia oppure accorparle alle zone vicine non è ancora stata presa.
+**Suppressing the small zones.** Colouring a zone means asserting something about its price, and a mean built on four observations is not comparable with one built on 834. The threshold was set at ten listings: below it, the block stays grey and flat and the tooltip reads "not enough data" rather than a number. This is not a neutral choice, and it is the one point of the phase left open: nine zones of the city say nothing, and the decision between giving them a value by shrinking it towards the city mean, lowering the threshold or merging them with neighbouring zones has not yet been taken.
 
-**Media o mediana?** La richiesta iniziale riguardava il prezzo medio al metro quadro, ed è quindi la media a governare l'altezza dei blocchi. La mediana non sparisce però dalla mappa: compare nel tooltip insieme all'intervallo fra primo e terzo quartile, ed è lì che si legge l'asimmetria già stabilita nella fase 1. Lo scarto fra le due misure è informativo di per sé: vale mediamente un punto e mezzo percentuale, ma in una zona arriva al 35%, e un divario ampio segnala una zona con pochi immobili molto costosi piuttosto che una zona uniformemente cara.
+**Mean or median?** The original request concerned the mean price per square metre, so it is the mean that governs the height of the blocks. The median does not disappear from the map, though: it appears in the tooltip together with the interquartile range, and that is where the asymmetry established in phase 1 can be read. The gap between the two measures is informative in itself: it averages one and a half percentage points, but in one zone it reaches 35%, and a wide gap signals a zone with a few very expensive properties rather than a uniformly expensive zone.
 
-#### Le due variabili di prezzo
+#### The two price variables
 
-La prima variabile, il **prezzo medio**, è quello effettivamente richiesto nella zona. Ha però il difetto di confondere due informazioni distinte: quanto vale la posizione e quanto valgono gli immobili che vi si trovano. La fase 6 lo aveva già lasciato intuire, dato che fra prezzo medio e superficie media per zona la correlazione vale 0,572.
+The first variable, the **mean price**, is the one actually asked in the zone. It has the drawback of conflating two distinct pieces of information: what the location is worth and what the properties standing on it are worth. Phase 6 already hinted at this, since the correlation between mean price and mean floor area by zone is 0.572.
 
-La seconda variabile, l'**appartamento tipo**, separa le due informazioni. Si ottiene rifittando il modello della fase 8 con le dummy dei NIL anziché delle macrozone, e usandolo poi per prezzare un solo appartamento identico in ciascuna zona.
+The second variable, the **reference flat**, separates the two. It is obtained by refitting the phase 8 model with NIL dummies rather than macro-zone ones, and then using it to price a single identical flat in each zone.
 
 | | |
 |---|---|
-| righe | 14.591 |
-| zone stimate | **77** |
-| R² adjusted | **0,9215** (contro 0,9059 con le macrozone) |
-| appartamento di riferimento | 80 m², 3 locali, 1 bagno, ristrutturato, piano 2, ascensore, riscaldamento centralizzato |
-| intervallo dei valori | da € 2.630 a € 8.672 /m² |
+| rows | 14,591 |
+| zones estimated | **77** |
+| adjusted R² | **0.9215** (against 0.9059 with the macro-zones) |
+| reference flat | 80 m², 3 rooms, 1 bathroom, renovated, floor 2, lift, central heating |
+| range of values | from € 2,630 to € 8,672 /m² |
 
-Le due misure correlano fra loro a 0,98, ma le distanze cambiano, ed è esattamente lì che sta l'informazione utile.
+The two measures correlate at 0.98, but the distances change, and that is exactly where the useful information lies:
 
-| zona | prezzo medio | appartamento tipo | scarto |
+| zone | mean price | reference flat | gap |
 |---|---|---|---|
-| Brera | 12.303 | **8.672** | −3.631 |
-| Tre Torri | 11.754 | **7.796** | −3.958 |
-| Duomo | 11.080 | **8.411** | −2.669 |
-| Parco Bosco in Città | 2.904 | **3.736** | **+832** |
+| Brera | 12,303 | **8,672** | −3,631 |
+| Tre Torri | 11,754 | **7,796** | −3,958 |
+| Duomo | 11,080 | **8,411** | −2,669 |
+| Parco Bosco in Città | 2,904 | **3,736** | **+832** |
 
-Tre Torri perde quasi 4.000 euro al metro quadro e scende dal secondo al terzo posto, scavalcata dal Duomo: il suo prezzo grezzo è gonfiato dal fatto che in quella zona gli appartamenti hanno una superficie media di 179 metri quadri e sono di costruzione recente, non dalla posizione in sé. All'estremo opposto Parco Bosco in Città guadagna terreno, perché il prezzo grezzo la sottostima: vi si vendono case grandi, che al metro quadro costano meno. È la risposta quantificata alla domanda che la fase 9 aveva sollevato senza chiuderla, e cioè che più della metà di quello che sembra un premio di lusso è in realtà il quartiere.
+Tre Torri loses almost 4,000 euros per square metre and drops from second to third place, overtaken by Duomo: its raw price is inflated by the fact that flats in that zone average 179 square metres and are of recent construction, not by the location itself. At the opposite end Parco Bosco in Città gains ground, because the raw price understates it: large houses are sold there, and they cost less per square metre. It is the quantified answer to the question phase 9 raised without closing, namely that more than half of what looks like a luxury premium is in fact the neighbourhood.
 
-**Il limite di questa variabile, misurato.** L'obiezione più ovvia è che nessun annuncio reale coincide con l'appartamento di riferimento. È la stessa obiezione che si potrebbe muovere al prezzo al metro quadro, e la risposta è la stessa: la costruzione serve a confrontare le zone su basi uguali. Resta però vero che la stima si appoggia al modello tanto più quanto la zona è lontana dal riferimento, e questa distanza si può misurare. La quota di annunci compresi fra 60 e 100 metri quadri vale il 44% nella zona mediana, e solo due zone su 78 scendono sotto il 15%: Parco Sempione con il 9% e Tre Torri con il 10%. Poiché Parco Sempione è già esclusa dal modello per insufficiente numerosità, resta una sola zona, Tre Torri, in cui il numero è più un'estrapolazione del modello che una lettura dei dati di quella zona, e va letto sapendolo.
+**The limit of this variable, measured.** The most obvious objection is that no real listing coincides with the reference flat. It is the same objection one could raise against price per square metre, and the answer is the same: the construction serves to compare zones on equal terms. It remains true, however, that the estimate leans on the model the further a zone is from the reference, and this distance can be measured. The share of listings between 60 and 100 square metres is 44% in the median zone, and only two zones out of 78 fall below 15%: Parco Sempione at 9% and Tre Torri at 10%. Since Parco Sempione is already excluded from the model for insufficient sample size, a single zone remains, Tre Torri, in which the figure is more an extrapolation of the model than a reading of that zone's data, and it should be read knowing this.
 
-#### Le due viste
+#### The two views
 
-Nella vista **3D** altezza e colore portano due variabili diverse: l'altezza rappresenta il prezzo e il colore la superficie media, suddivisa in cinque classi per quantile con tagli a 81, 88, 94 e 107 metri quadri. Si tratta quindi di una mappa bivariata, capace di mostrare qualcosa che una mappa a una sola variabile non potrebbe: dove si trovino gli appartamenti cari e piccoli e dove quelli economici e grandi. Il risultato è che il primo caso non esiste affatto, perché nessuna zona presenta insieme appartamenti piccoli e prezzi alti. A Milano non si paga il metro quadro caro per stare stretti.
+In the **3D** view height and colour carry two different variables: height represents price and colour the mean floor area, split into five quantile classes with cuts at 81, 88, 94 and 107 square metres. It is therefore a bivariate map, able to show something a single-variable map could not: where the expensive small flats are and where the cheap large ones are. The result is that the first case does not exist at all, because no zone combines small flats with high prices. In Milan you do not pay a high price per square metre in order to be cramped.
 
-Nella vista **2D piatta**, non essendoci più l'altezza, è il colore a farsi carico del prezzo, sempre in cinque classi per quantile ricalcolate su ciascuna delle due variabili di prezzo. È una rappresentazione meno spettacolare e più precisa, perché nessuna zona può coprirne un'altra.
+In the **2D flat** view, with the height gone, it is the colour that takes on the price, again in five quantile classes recomputed on each of the two price variables. It is a less striking and more precise representation, because no zone can hide another.
 
-In entrambe le viste le classi sono definite per quantile e non a intervalli uguali, perché su una distribuzione asimmetrica gli intervalli uguali produrrebbero quattro classi quasi vuote e una che contiene tutto il resto.
+In both views the classes are defined by quantile rather than by equal intervals, because on a skewed distribution equal intervals would produce four almost empty classes and one containing everything else.
 
-| variabile | tagli delle 5 classi |
+| variable | cuts of the 5 classes |
 |---|---|
-| superficie media (m²) | 81 · 88 · 94 · 107 |
-| prezzo medio (€/m²) | 3.498 · 4.280 · 5.114 · 7.019 |
-| appartamento tipo (€/m²) | 3.648 · 4.208 · 4.809 · 5.910 |
+| mean floor area (m²) | 81 · 88 · 94 · 107 |
+| mean price (€/m²) | 3,498 · 4,280 · 5,114 · 7,019 |
+| reference flat (€/m²) | 3,648 · 4,208 · 4,809 · 5,910 |
 
-#### Le scelte di rappresentazione, e perché
+#### The representation choices, and why
 
-L'altezza parte sempre da zero. Sottrarre il minimo per far risaltare le differenze farebbe sembrare una zona da 6.000 euro al metro quadro il doppio di una da 5.000, il che sarebbe una rappresentazione ingannevole. Il fattore di scala vale 0,3 ed è dichiarato in legenda: la zona più cara risulta così alta circa 3,7 chilometri su una città larga diciotto.
+Height always starts from zero. Subtracting the minimum to make the differences stand out would make a zone at 6,000 euros per square metre look twice as expensive as one at 5,000, which would be a misleading representation. The scale factor is 0.3 and is stated in the legend: the dearest zone thus stands about 3.7 kilometres tall on a city eighteen wide.
 
-L'altezza vista in prospettiva non è però una scala di misura affidabile. Un blocco lontano sembra più basso di uno vicino di pari altezza, i blocchi alti nascondono quelli che stanno dietro, e l'area del poligono, che non significa nulla, finisce per acquistare peso visivo. Da questa consapevolezza discendono tre contromisure: una classifica testuale di tutte le zone, dove i confronti si leggono davvero; il tooltip con i numeri esatti; e la vista 2D, che elimina il problema alla radice.
+Height seen in perspective is not, however, a reliable measuring scale. A distant block looks lower than a nearby one of the same height, tall blocks hide the ones behind them, and the area of the polygon, which means nothing, ends up carrying visual weight. Three countermeasures follow from this awareness: a text ranking of all the zones, where comparisons can actually be read; the tooltip with the exact figures; and the 2D view, which removes the problem at the root.
 
-Selezionando una zona, dalla classifica oppure cliccandola direttamente sulla mappa, le altre scendono a un terzo della loro altezza e si attenuano, la mappa ruota automaticamente sul lato che presenta meno massa alta davanti alla zona scelta, e un cartellino ne riporta nome e valore. Si tratta di una messa a fuoco temporanea, nella quale la zona selezionata conserva la propria altezza vera. Per tornare alla vista d'insieme basta cliccare fuori dalle zone oppure premere Esc.
+Selecting a zone, either from the ranking or by clicking it directly on the map, drops the others to a third of their height and fades them, turns the map automatically to the side with the least tall mass in front of the chosen zone, and shows a label with its name and value. This is a temporary focus state, in which the selected zone keeps its true height. To go back to the overview it is enough to click away from the zones or press Esc.
 
-Il fondo è scuro in entrambe le viste. Il primo tentativo era stato fatto su fondo chiaro con bordi bianchi fra i blocchi, ma i bordi risultavano invisibili e i blocchi finivano per impastarsi l'uno nell'altro. Entrambe le rampe di colore sono sequenziali a tinta unica, arancio per la superficie e blu per il prezzo, e vanno dal chiaro allo scuro al crescere del valore, con ogni passo verificato per un contrasto di almeno 3:1 contro il fondo. Questo limite è reale e ha vincolato la scelta: un passo più scuro di `#a05520` sull'arancio, o di `#256abf` sul blu, scende sotto la soglia e la classe più alta comincia a sparire nello sfondo.
+The ground is dark in both views. The first attempt was made on a light ground with white edges between the blocks, but the edges turned out to be invisible and the blocks ended up merging into one another. Both colour ramps are sequential and single-hue, orange for floor area and blue for price, and run from light to dark as the value grows, with every step checked for a contrast of at least 3:1 against the ground. This limit is real and constrained the choice: a step darker than `#a05520` on the orange, or `#256abf` on the blue, falls below the threshold and the top class starts to disappear into the background.
 
-Lo zoom in allontanamento è infine bloccato al livello 10, appena sotto quello della vista d'insieme: non essendoci alcuna mappa stradale sotto le zone, allargare oltre rimpicciolirebbe soltanto Milano dentro uno schermo vuoto.
+Zooming out is finally capped at level 10, just below that of the overview: with no street map underneath the zones, going wider would only shrink Milan inside an empty screen.
 
-#### Il file
+#### The file
 
-Il file `milano-3d.html` pesa 2,71 MB ed è completamente autonomo, perché vi sono incorporati sia la libreria di rendering — deck.gl 9.4.0, nel file `deck.min.js`, con la versione fissata esattamente come per le dipendenze Python — sia il GeoJSON delle 88 zone. Non effettua alcuna richiesta di rete e non scarica alcun tile cartografico: si apre con un doppio clic e funziona offline.
+The file `milano-3d.html` weighs 2.71 MB and is completely self-contained, because both the rendering library — deck.gl 9.4.0, in the file `deck.min.js`, with the version pinned exactly as for the Python dependencies — and the GeoJSON of the 88 zones are embedded in it. It makes no network requests and downloads no map tiles: it opens with a double click and works offline.
 
-Vale la pena chiarire che cosa la mappa non è. È un colpo d'occhio e non uno strumento di misura, funzione per la quale esistono la classifica e il tooltip. Restano inoltre validi tutti i limiti dichiarati nella fase 9: si tratta di prezzi richiesti e non di transazione, di un'istantanea e non di un andamento, e di relazioni associative e non causali.
+It is worth being clear about what the map is not. It is a coup d'œil and not a measuring instrument, a role filled by the ranking and the tooltip. All the limits declared in phase 9 also remain in force: these are asking rather than transaction prices, a snapshot rather than a trend, and associative rather than causal relationships.
 
 ---
 
-## Avanzamento
+## Progress
 
-| Fase | Stato |
+| Phase | Status |
 |---|---|
-| 0. Pulizia dei dati | ✅ **completata** — 18.017 → 16.346 annunci |
-| 1. Descriptive Statistics | ✅ **completata** — tabella statistiche + box plot |
-| 2. Probability & Distributions | ✅ **completata** — istogrammi, Q-Q plot, percentili, indici di forma, log |
-| 3. Sampling & Confidence Intervals | ✅ **completata** — CLT verificato, copertura misurata |
-| 4. Hypothesis Testing | ✅ **completata** — 4 test di Welch con effect size e IC |
-| 5. ANOVA | ✅ **completata** — η² = 0,556, Welch, Tukey, diagnostica |
-| 6. Correlation | ✅ **completata** — Pearson vs Spearman, heatmap, multicollinearità |
-| 7. Linear Regression | ✅ **completata** — semplice e log-log, elasticità 1,09 |
-| 8. Multiple Linear Regression | ✅ **completata** — R² adj = 0,906, VIF, dummy di zona, HC3 |
-| 9. Statistical Conclusions | ✅ **completata** — effetti, IC, limiti dichiarati |
-| 10. Mappa del prezzo per zona | ✅ **completata** — mappa 3D/2D interattiva, 78 zone, appartamento tipo |
+| 0. Data cleaning | ✅ **complete** — 18,017 → 16,346 listings |
+| 1. Descriptive Statistics | ✅ **complete** — statistics table + box plots |
+| 2. Probability & Distributions | ✅ **complete** — histograms, Q-Q plots, percentiles, shape statistics, log |
+| 3. Sampling & Confidence Intervals | ✅ **complete** — CLT verified, coverage measured |
+| 4. Hypothesis Testing | ✅ **complete** — 4 Welch tests with effect sizes and CIs |
+| 5. ANOVA | ✅ **complete** — η² = 0.556, Welch, Tukey, diagnostics |
+| 6. Correlation | ✅ **complete** — Pearson vs Spearman, heatmap, multicollinearity |
+| 7. Linear Regression | ✅ **complete** — simple and log-log, elasticity 1.09 |
+| 8. Multiple Linear Regression | ✅ **complete** — adj. R² = 0.906, VIF, zone dummies, HC3 |
+| 9. Statistical Conclusions | ✅ **complete** — effects, CIs, limits declared |
+| 10. Map of price by zone | ✅ **complete** — interactive 3D/2D map, 78 zones, reference flat |
 
 ---
 
-## Struttura del progetto
+## Project structure
 
 ```
 milano_real_estate_analysis/
-├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-10
-├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
-├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
-├── milano-3d.html                      # mappa interattiva — output della fase 10
-├── deck.min.js                         # deck.gl 9.4.0, incorporato nella mappa
-├── milano-heatmap.html                 # mappa 2D di riferimento di partenza
-├── charts/                             # figure delle fasi 1-8 in PNG (14 file)
-├── REPORT.md                           # resoconto dei risultati, per chiunque
+├── milano_analysis.py                  # analysis script — cleaning + phases 1-10
+├── immobiliare_milano_vendita.csv      # dataset (18,017 × 31)
+├── milano_zone_NIL.geojson             # 88 NIL polygons — input of phase 10
+├── milano-3d.html                      # interactive map — output of phase 10
+├── deck.min.js                         # deck.gl 9.4.0, embedded in the map
+├── milano-heatmap.html                 # the 2D reference map work started from
+├── charts/                             # figures of phases 1-8 in PNG (14 files)
+├── REPORT.md                           # write-up of the results, for anyone
+├── REPORT.it.md                        # Italian version
+├── README.it.md                        # Italian version
 └── README.md
 ```
 
-Dataset, geometrie e libreria di rendering si trovano già nella cartella del progetto, quindi lo script di analisi può usare percorsi relativi e va lanciato dalla cartella stessa.
+The dataset, the geometries and the rendering library are already in the project folder, so the analysis script can use relative paths and should be launched from that folder.
 
-Ogni funzione grafica salva il PNG in `charts/` con `plt.savefig(..., dpi=150)` e poi lo mostra a schermo con `plt.show()` — in quest'ordine, perché `show()` svuota la figura e dopo di lui non resterebbe niente da salvare. I file prodotti finora sono `boxplots.png` (fase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (fase 2) , `sampling_distributions.png` (fase 3) , `anova_residuals.png` + `macrozone_boxplots.png` (fase 5) , `correlation_matrix.png` + `pearson_spearman_comparison.png` (fase 6) e `linear_regression.png` + `linear_regression_residuals.png` + `log_linear_regression_residuals.png` (fase 7) e `multiple_regression_residuals.png` (fase 8); lo script va lanciato dalla cartella del progetto, dato che il percorso è relativo come quello del CSV.
+Every plotting function saves its PNG into `charts/` with `plt.savefig(..., dpi=150)` and only then displays it with `plt.show()` — in that order, because `show()` clears the figure and after it there would be nothing left to save. The files produced so far are `boxplots.png` (phase 1), `histograms.png`, `qq_plots.png`, `normal_distribution.png`, `log_comparison.png` (phase 2), `sampling_distributions.png` (phase 3), `anova_residuals.png` and `macrozone_boxplots.png` (phase 5), `correlation_matrix.png` and `pearson_spearman_comparison.png` (phase 6), `linear_regression.png`, `linear_regression_residuals.png` and `log_linear_regression_residuals.png` (phase 7), and `multiple_regression_residuals.png` (phase 8).
 
-La pipeline, nell'ordine in cui viene eseguita in `milano_analysis.py`:
+The pipeline, in the order in which it runs in `milano_analysis.py`:
 
 ```
-# pulizia
-inspect_data              → info, shape, describe, mancanti, duplicati sul file grezzo
-inspect_categorical       → value_counts delle variabili categoriali
-remove_subunits           → filtro unit == 0                        18.017 → 16.741
-inspect_quality_variables → controllo dei flag prima di filtrare
-apply_quality_filters     → category / is_outlier / price_is_range  16.741 → 16.346
-inspect_missing_values    → conferma: price, surface_mq, price_per_mq completi
-encode_elevator           → NaN → 0, dummy 0/1
-inspect_text_variables    → forma reale di rooms, bathrooms, floor prima del parsing
-parse_text_variables      → da stringa a numerico
-validate_clean_data       → shape, mancanti, duplicati, dtype, distribuzioni finali
+# cleaning
+inspect_data              → info, shape, describe, missing, duplicates on the raw file
+inspect_categorical       → value_counts of the categorical variables
+remove_subunits           → filter unit == 0                        18,017 → 16,741
+inspect_quality_variables → check the flags before filtering
+apply_quality_filters     → category / is_outlier / price_is_range  16,741 → 16,346
+inspect_missing_values    → confirm: price, surface_mq, price_per_mq complete
+encode_elevator           → NaN → 0, 0/1 dummy
+inspect_text_variables    → actual shape of rooms, bathrooms, floor before parsing
+parse_text_variables      → from string to numeric
+validate_clean_data       → shape, missing, duplicates, dtypes, final distributions
 
-# fase 1
-descriptive_statistics    → tabella 13 statistiche × 3 variabili
-plot_boxplots             → box plot di price, surface_mq, price_per_mq
+# phase 1
+descriptive_statistics    → table of 13 statistics × 3 variables
+plot_boxplots             → box plots of price, surface_mq, price_per_mq
 
-# fase 2
-plot_hist                 → istogrammi con media e mediana marcate
-plot_qq                   → Q-Q plot contro la normale
-percentile_statistics     → tabella 9 percentili × 3 variabili
-distribution_shape        → asimmetria e curtosi × 3 variabili
-plot_normal_distribution  → istogrammi in densità + curva normale sovrapposta
-log_transform             → asimmetria e curtosi di log(price)
-plot_log_comparison       → price contro log(price), affiancati, con curva normale
+# phase 2
+plot_hist                 → histograms with mean and median marked
+plot_qq                   → Q-Q plots against the normal
+percentile_statistics     → table of 9 percentiles × 3 variables
+distribution_shape        → skewness and kurtosis × 3 variables
+plot_normal_distribution  → density histograms + fitted normal curve
+log_transform             → skewness and kurtosis of log(price)
+plot_log_comparison       → price against log(price), side by side, with normal curve
 
-# fase 3
-population_parameters     → μ e σ (ddof=0) di price_per_mq sulla popolazione
-draw_sample               → 1.000 campioni per n = 30/100/500, istogrammi + SE empirico vs teorico
-confidence_intervals      → 1.000 intervalli t al 95% per ciascun n, copertura misurata
+# phase 3
+population_parameters     → μ and σ (ddof=0) of price_per_mq on the population
+draw_sample               → 1,000 samples for n = 30/100/500, histograms + empirical vs theoretical SE
+confidence_intervals      → 1,000 95% t intervals for each n, coverage measured
 
-# fase 4
-two_sample_test           → helper: Levene, Welch, df, IC 95% della differenza, d di Cohen
-hypothesis_testing        → i 4 confronti (2 coppie di zone, elevator, condition)
+# phase 4
+two_sample_test           → helper: Levene, Welch, df, 95% CI of the difference, Cohen's d
+hypothesis_testing        → the 4 comparisons (2 zone pairs, elevator, condition)
 
-# fase 5 — orchestrate da anova_phase
-anova_analysis            → F, gradi di libertà, p, η² calcolato dalle devianze
-welch_anova               → Levene su 32 gruppi + ANOVA di Welch
-residual_diagnostics      → OLS price_per_mq ~ C(macrozone), residui e Q-Q plot
-tukey_posthoc             → Tukey HSD su 496 coppie, significative ordinate per scarto
-plot_macrozone_boxplots   → box plot delle 32 zone ordinate per mediana
+# phase 5 — orchestrated by anova_phase
+anova_analysis            → F, degrees of freedom, p, η² computed from the sums of squares
+welch_anova               → Levene over 32 groups + Welch's ANOVA
+residual_diagnostics      → OLS price_per_mq ~ C(macrozone), residuals and Q-Q plot
+tukey_posthoc             → Tukey HSD over 496 pairs, significant ones ordered by gap
+plot_macrozone_boxplots   → box plots of the 32 zones ordered by median
 
-# fase 6 — orchestrate da correlation_phase
-prepare_correlation_data  → condition → scala ordinale 1-4 (condition_numeric)
-correlation_analysis      → Pearson e Spearman con price, variabile per variabile
-correlation_matrix        → matrice 6 × 6 + heatmap seaborn
-pearson_spearman_comparison → barre affiancate delle due misure
+# phase 6 — orchestrated by correlation_phase
+prepare_correlation_data  → condition → ordinal scale 1-4 (condition_numeric)
+correlation_analysis      → Pearson and Spearman with price, variable by variable
+correlation_matrix        → 6 × 6 matrix + seaborn heatmap
+pearson_spearman_comparison → side-by-side bars of the two measures
 
-# fase 7 — orchestrate da linear_regression_phase
-linear_regression         → OLS price ~ surface_mq: β, R², t, p, IC 95%
-plot_linear_regression    → nuvola dei punti con la retta stimata
-linear_residual_diagnostics → residui vs stimati + Q-Q plot dei residui
-breusch_pagan_test        → LM, p, F sul modello lineare
-log_linear_regression     → OLS log(price) ~ log(surface): elasticità
-log_residual_diagnostics  → stessa diagnostica sul modello log-log
-log_breusch_pagan_test    → LM, p, F sul modello log-log
+# phase 7 — orchestrated by linear_regression_phase
+linear_regression         → OLS price ~ surface_mq: β, R², t, p, 95% CI
+plot_linear_regression    → scatter with the fitted line
+linear_residual_diagnostics → residuals vs fitted + Q-Q plot of the residuals
+breusch_pagan_test        → LM, p, F on the linear model
+log_linear_regression     → OLS log(price) ~ log(surface): elasticity
+log_residual_diagnostics  → same diagnostics on the log-log model
+log_breusch_pagan_test    → LM, p, F on the log-log model
 
-# fase 8 — orchestrate da multiple_regression_phase
-prepare_regression_data   → log_price, log_surface, dropna sulle variabili del modello
-vif_analysis              → VIF dei sette predittori numerici
-multiple_regression       → modello completo: R², R² adj, AIC, coefficienti
-zone_comparison           → stesso modello con e senza dummy di zona, affiancati
-robust_standard_errors    → HC3 contro errori standard classici
-multiple_residual_diagnostics → residui vs stimati + Q-Q plot
-model_comparison          → log-log semplice contro completo, sulle stesse righe
+# phase 8 — orchestrated by multiple_regression_phase
+prepare_regression_data   → log_price, log_surface, dropna on the model variables
+vif_analysis              → VIF of the seven numeric predictors
+multiple_regression       → full model: R², adj. R², AIC, coefficients
+zone_comparison           → same model with and without zone dummies, side by side
+robust_standard_errors    → HC3 against classical standard errors
+multiple_residual_diagnostics → residuals vs fitted + Q-Q plot
+model_comparison          → simple log-log against full, on the same rows
 
-# fase 9 — orchestrate da conclusions_phase
-conclusions_table         → coefficienti, IC 95%, p-value, flag di significatività
-zone_variance_share       → R² adj con e senza zona, e la differenza
+# phase 9 — orchestrated by conclusions_phase
+conclusions_table         → coefficients, 95% CIs, p-values, significance flags
+zone_variance_share       → adj. R² with and without zone, and the difference
 
-# fase 10 — orchestrate da map_phase
-prepare_map_data          → solo gli annunci con nil_id        16.346 → 16.333
-zone_aggregates           → n, media, mediana, p25, p75, prezzo e superficie per NIL
-suppress_small_zones      → zone sotto i 10 annunci marcate, non colorate
-location_premium          → OLS con dummy dei NIL, poi lo stesso appartamento
-                            prezzato in ogni zona
-value_classes             → tagli delle 5 classi per quantile, una per variabile
-build_zone_geojson        → properties del GeoJSON riscritte con i propri aggregati
-map_metadata              → riepilogo, tagli, appartamento di riferimento
-write_3d_map              → deck.gl + GeoJSON incorporati in milano-3d.html
+# phase 10 — orchestrated by map_phase
+prepare_map_data          → only the listings with a nil_id        16,346 → 16,333
+zone_aggregates           → n, mean, median, p25, p75, price and floor area per NIL
+suppress_small_zones      → zones under 10 listings flagged, not coloured
+location_premium          → OLS with NIL dummies, then the same flat priced in every zone
+value_classes             → cuts of the 5 quantile classes, one set per variable
+build_zone_geojson        → GeoJSON properties rewritten with our own aggregates
+map_metadata              → summary, cuts, reference flat
+write_3d_map              → deck.gl + GeoJSON embedded into milano-3d.html
 ```
 
-La fase 8 restituisce `regression_data` insieme al modello stimato, che il programma principale passa alla fase 9: in questo modo le conclusioni si leggono dal modello già stimato anziché rifittarlo una seconda volta.
+Phase 8 returns `regression_data` together with the fitted model, which the main program passes on to phase 9: in this way the conclusions are read off the model already estimated rather than refitting it a second time.
 
-Ogni trasformazione è preceduta dalla propria ispezione, secondo il principio di guardare com'è fatta una colonna prima di modificarla. È il motivo per cui ci si è accorti in tempo che il secondo e il terzo passaggio della pulizia sarebbero risultati in gran parte a vuoto.
+Every transformation is preceded by its own inspection, on the principle of looking at how a column is made before modifying it. It is the reason it became clear in time that the second and third cleaning steps would turn out to be largely empty.
 
-### Strumenti
+### Tools
 
-`pandas` e `numpy` per il lavoro sui dati (`numpy` già in uso per la trasformazione logaritmica della fase 2), `scipy.stats` per le fasi 2-6 (già in uso per il Q-Q plot, per le curve normali sovrapposte agli istogrammi e per i valori critici *t* della fase 3), `statsmodels` per le fasi 5, 7 e 8 — in uso con `statsmodels.api`, `anova_oneway`, `pairwise_tukeyhsd`, `het_breuschpagan` e `variance_inflation_factor` —, `matplotlib` per i grafici e `seaborn` per la sola heatmap della fase 6. La fase 10 non aggiunge dipendenze Python — usa `json` dalla libreria standard — e affida il rendering della mappa a **deck.gl 9.4.0**, incorporato nel file di output.
+`pandas` and `numpy` for the data work (`numpy` already in use for the log transformation of phase 2), `scipy.stats` for phases 2-6 (already in use for the Q-Q plots, for the normal curves overlaid on the histograms and for the *t* critical values of phase 3), `statsmodels` for phases 5, 7 and 8 — used through `statsmodels.api`, `anova_oneway`, `pairwise_tukeyhsd`, `het_breuschpagan` and `variance_inflation_factor` — `matplotlib` for the charts and `seaborn` for the phase 6 heatmap alone. Phase 10 adds no Python dependency — it uses `json` from the standard library — and entrusts the rendering of the map to **deck.gl 9.4.0**, embedded in the output file.
 
-**Perché statsmodels e non scikit-learn.** Il progetto è un esercizio di **inferenza statistica** — stimare quantità della popolazione a partire da un campione e quantificare l'incertezza che le circonda. Ogni fase dalla 3 in poi ha bisogno di errori standard, statistiche test, p-value e intervalli di confidenza, non solo di valori stimati.
+**Why statsmodels and not scikit-learn.** The project is an exercise in **statistical inference** — estimating population quantities from a sample and quantifying the uncertainty around them. Every phase from the third onwards needs standard errors, test statistics, p-values and confidence intervals, not just fitted values.
 
-Le due librerie stimano lo stesso modello OLS e restituiscono gli stessi coefficienti, ma sono costruite per domande diverse:
+The two libraries estimate the same OLS model and return the same coefficients, but they are built for different questions:
 
 | | `scikit-learn` | `statsmodels` |
 |---|---|---|
-| Coefficienti β, R² | ✅ | ✅ |
-| Errori standard di β | ❌ | ✅ |
-| Statistica t e p-value per coefficiente | ❌ | ✅ |
-| Intervallo di confidenza per β | ❌ | ✅ |
-| R² adjusted, AIC/BIC, test F sul modello | ❌ | ✅ |
+| β coefficients, R² | ✅ | ✅ |
+| Standard errors of β | ❌ | ✅ |
+| t statistic and p-value per coefficient | ❌ | ✅ |
+| Confidence interval for β | ❌ | ✅ |
+| Adjusted R², AIC/BIC, F test on the model | ❌ | ✅ |
 | Breusch-Pagan, Durbin-Watson, VIF, Tukey HSD | ❌ | ✅ |
-| Errori standard robusti (HC3) | ❌ | ✅ |
-| Previsione su dati nuovi, cross-validation, regolarizzazione | ✅ | limitata |
+| Robust standard errors (HC3) | ❌ | ✅ |
+| Prediction on new data, cross-validation, regularisation | ✅ | limited |
 
-scikit-learn è una libreria di **previsione**: ottimizza l'accuratezza fuori campione e lascia fuori di proposito l'apparato inferenziale, perché per prevedere la verifica onesta è l'errore su dati non visti, non un p-value. (Fonte di confusione: nel mondo del machine learning "inference" indica la cosa opposta — eseguire un modello già addestrato per produrre previsioni.)
+scikit-learn is a **prediction** library: it optimises out-of-sample accuracy and deliberately leaves out the inferential apparatus, because for prediction the honest check is the error on unseen data, not a p-value. (A source of confusion: in the machine learning world "inference" means the opposite thing — running an already trained model to produce predictions.)
 
-`sm.OLS(y, X).fit().summary()` stampa in una sola chiamata la tabella dei coefficienti con errori standard, *t*, *p* e intervallo al 95% — quella tabella **è** l'output delle fasi 7 e 8. Una frase da fase 9 del tipo *"positiva e statisticamente significativa (β = …, p < 0,001) dopo aver controllato per le altre caratteristiche"* non è qualcosa che scikit-learn possa produrre.
+`sm.OLS(y, X).fit().summary()` prints in a single call the table of coefficients with standard errors, *t*, *p* and the 95% interval — and that table **is** the output of phases 7 and 8. A phase 9 sentence of the kind *"positive and statistically significant (β = …, p < 0.001) after controlling for the other characteristics"* is not something scikit-learn can produce.

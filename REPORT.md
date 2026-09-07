@@ -1,164 +1,166 @@
-# Quanto costano le case a Milano, e perché
+# What houses cost in Milan, and why
 
-Questo documento riassume i risultati di un'analisi statistica condotta su 16.346 annunci di vendita di immobili a Milano, estratti dal portale immobiliare.it il **26 agosto 2026**. La domanda di partenza è semplice: da che cosa dipende il prezzo di una casa a Milano, e quanto pesa ciascun fattore rispetto agli altri?
+> 🇮🇹 Versione italiana: **[REPORT.it.md](REPORT.it.md)**
 
-Il testo è pensato per essere letto senza conoscenze di statistica. Chi volesse il dettaglio dei metodi, delle verifiche e del codice lo trova nel [README](README.md), che accompagna passo per passo tutte le dieci fasi del lavoro.
+This document sums up the results of a statistical analysis of 16,346 property listings in Milan, pulled from the portal immobiliare.it on **26 August 2026**. The starting question is a simple one: what determines the price of a house in Milan, and how much does each factor weigh against the others?
 
-Prima di cominciare, due precisazioni che valgono per tutto quello che segue. I prezzi analizzati sono quelli richiesti dai venditori negli annunci, non quelli effettivamente pagati al momento del rogito. E si tratta di una fotografia scattata in un solo giorno, il 26 agosto 2026, non di una serie storica: niente di quanto scritto qui riguarda l'andamento dei prezzi nel tempo, né consente di prevederlo.
+The text is written to be read without any background in statistics. Anyone wanting the detail of the methods, the checks and the code will find it in the [README](README.md), which walks through all ten phases of the work.
 
----
-
-## I risultati principali
-
-L'analisi arriva a sei conclusioni, che le sezioni successive spiegano una per una.
-
-La superficie è il fattore che pesa più di ogni altro, ma il suo effetto non è proporzionale: le case grandi costano più che proporzionalmente rispetto a quelle piccole. Il quartiere, da solo, spiega più della metà delle differenze di prezzo al metro quadro fra un annuncio e l'altro, ed è quindi il secondo fattore in ordine di importanza. Proprio per questo, buona parte di ciò che appare come valore "di lusso" si rivela essere il valore dell'indirizzo: tenendo conto del quartiere, il premio del segmento di lusso si dimezza.
-
-Ci sono poi due risultati negativi, cioè due cose che ci si aspetterebbe contassero e invece non contano. Il numero di locali non ha alcun effetto sul prezzo una volta che si conoscono la superficie e il quartiere, e lo stesso vale per il tipo di riscaldamento.
-
-Infine, due osservazioni sulla geografia della città. Milano non è divisa fra un centro e una periferia: passando dalla zona più economica alla più cara si sale in modo continuo, senza salti. E il prezzo medio di una zona non è un'informazione pura, perché mescola quanto vale la posizione con quanto valgono le case che vi si trovano; separare le due cose cambia la classifica dei quartieri.
+Two things need saying before we start. The prices analysed are those **asked by sellers in the listings**, not those actually paid at completion. And they are a snapshot taken on a single day, 26 August 2026, rather than a time series: nothing written here concerns the movement of prices over time, nor allows it to be predicted.
 
 ---
 
-## Il mercato visto dall'alto
+## The main findings
 
-Il punto di partenza è capire come sono distribuiti i prezzi, perché da questo dipende quale numero abbia senso usare per riassumerli.
+The analysis reaches six conclusions, which the sections below explain one at a time.
 
-| | media | mediana |
+Floor area is the factor that weighs more than any other, but its effect is not proportional: large homes cost more than proportionally more than small ones. The neighbourhood, on its own, explains more than half of the differences in price per square metre between one listing and another, which makes it the second most important factor. It is precisely for this reason that much of what looks like "luxury" value turns out to be the value of the address: once the neighbourhood is accounted for, the luxury premium halves.
+
+There are then two negative results, that is, two things one would expect to matter which do not. The number of rooms has no effect on price once floor area and neighbourhood are known, and the same goes for the type of heating.
+
+Finally, two observations about the geography of the city. Milan is not split between a centre and a periphery: moving from the cheapest zone to the dearest one, the climb is continuous, without jumps. And the average price of a zone is not a clean piece of information, because it mixes what the location is worth with what the properties standing on it are worth; separating the two changes the ranking of neighbourhoods.
+
+---
+
+## The market from above
+
+The starting point is understanding how prices are distributed, because that determines which summary figure it makes sense to use.
+
+| | mean | median |
 |---|---|---|
-| prezzo | € 570.105 | € 379.000 |
-| superficie | 95 m² | 80 m² |
-| prezzo al m² | € 5.622 | € 5.073 |
+| price | € 570,105 | € 379,000 |
+| floor area | 95 m² | 80 m² |
+| price per m² | € 5,622 | € 5,073 |
 
-La distanza fra le due colonne non è un dettaglio contabile, ma il primo risultato dell'analisi. La mediana è il valore che divide esattamente a metà gli annunci: metà delle case in vendita a Milano costa meno di 379.000 euro. La media, invece, è di 570.105 euro, cioè quasi il cinquanta per cento più alta, e la ragione è che una minoranza di immobili molto costosi la trascina verso l'alto.
+The distance between the two columns is not an accounting detail but the first result of the analysis. The median is the value that splits the listings exactly in half: half the homes for sale in Milan cost less than 379,000 euros. The mean, on the other hand, is 570,105 euros, almost fifty per cent higher, and the reason is that a minority of very expensive properties drags it upwards.
 
-Quanto sia ristretta questa minoranza si vede guardando i due estremi della distribuzione. Il dieci per cento più caro degli annunci parte da 1,09 milioni di euro, mentre l'uno per cento più caro parte da 3,5 milioni: fra questi due gradini ci sono quasi due milioni e mezzo di euro. Il mercato di fascia alta milanese è insomma un segmento a sé, con una dinamica propria, e ogni volta che si cita "il prezzo medio a Milano" si sta usando un numero che quel segmento ha spostato in modo consistente.
+Just how narrow that minority is can be seen by looking at the two ends of the distribution. The dearest ten per cent of listings starts at 1.09 million euros, while the dearest one per cent starts at 3.5 million: between these two rungs there are almost two and a half million euros. The top end of the Milan market is, in short, a segment of its own with its own dynamics, and every time someone quotes "the average price in Milan" they are using a figure that this segment has shifted considerably.
 
-Per questa ragione l'analisi ragiona quasi sempre in termini di prezzo al metro quadro anziché di prezzo assoluto. Dividere il prezzo per la superficie elimina la variabile più ovvia — le case grandi costano di più, il che non è una scoperta — e lascia emergere tutto il resto. L'effetto di questa divisione è misurabile: la variabilità dei prezzi si riduce di più della metà. Detto in altri termini, gran parte del motivo per cui due case hanno prezzi diversi è semplicemente che una è più grande dell'altra.
+For this reason the analysis works almost throughout in terms of price per square metre rather than absolute price. Dividing price by floor area removes the most obvious variable — large homes cost more, which is no discovery — and lets everything else come through. The effect of that division is measurable: the variability of prices falls by more than half. Put another way, much of the reason two homes have different prices is simply that one is bigger than the other.
 
 ---
 
-## Che cosa determina il prezzo
+## What determines the price
 
-Per rispondere alla domanda iniziale è stato costruito un modello statistico che considera tutte le caratteristiche di un immobile contemporaneamente, invece di esaminarle una alla volta. La differenza fra i due approcci è sostanziale, e conviene mostrarla con un esempio concreto.
+To answer the opening question, a statistical model was built that considers all the characteristics of a property at once, rather than examining them one at a time. The difference between the two approaches is substantial, and it is worth showing with a concrete example.
 
-Guardando i dati grezzi, le case dotate di ascensore costano in media 1.121 euro al metro quadro in più di quelle che ne sono prive. Sarebbe però sbagliato concludere che l'ascensore valga quella cifra, perché le case con ascensore si trovano tipicamente in palazzi più recenti e in zone più centrali, e differiscono dalle altre sotto molti aspetti insieme. La domanda corretta è: quanto vale l'ascensore fra due case identiche sotto ogni altro profilo?
+Looking at the raw data, homes with a lift cost on average 1,121 euros per square metre more than those without one. It would be wrong to conclude that the lift is worth that figure, because homes with a lift are typically in more recent buildings and in more central areas, and differ from the others in many respects at once. The right question is: what is a lift worth between two homes identical in every other way?
 
-Il modello risponde proprio a questa domanda, perché stima l'effetto di ciascuna caratteristica tenendo ferme tutte le altre. Il risultato è che, a parità di zona, superficie, stato di conservazione e tutto il resto, l'ascensore vale un aumento di prezzo dell'8,2 per cento. Il resto della differenza osservata nei dati grezzi non era l'ascensore: era il quartiere e il tipo di edificio in cui l'ascensore si trova.
+The model answers exactly that question, because it estimates the effect of each characteristic while holding all the others fixed. The result is that, for the same zone, floor area, condition and everything else, a lift is worth a price increase of 8.2 per cent. The rest of the difference observed in the raw data was not the lift: it was the neighbourhood and the kind of building the lift stands in.
 
-Applicando lo stesso ragionamento a tutte le caratteristiche disponibili si ottiene il quadro seguente, ordinato dal fattore più influente al meno influente.
+Applying the same reasoning to every available characteristic gives the picture below, ordered from the most influential factor to the least.
 
-| caratteristica | effetto sul prezzo, a parità di tutto il resto |
+| characteristic | effect on price, all else equal |
 |---|---|
-| superficie | ogni +1% di superficie corrisponde a +0,80% di prezzo |
-| appartenenza al segmento di lusso | +44% |
-| un bagno in più | +9,3% |
-| un gradino nella scala dello stato di conservazione | +8,4% |
-| presenza dell'ascensore | +8,2% |
-| ogni piano di altezza in più | +1,2% |
-| numero di locali | nessun effetto rilevabile |
-| tipo di riscaldamento | nessun effetto rilevabile |
+| floor area | every +1% of floor area corresponds to +0.80% of price |
+| luxury segment | +44% |
+| one more bathroom | +9.3% |
+| one step up the condition scale | +8.4% |
+| presence of a lift | +8.2% |
+| each floor higher up | +1.2% |
+| number of rooms | no detectable effect |
+| type of heating | no detectable effect |
 
-Nel complesso, il modello riesce a spiegare il 91 per cento delle differenze di prezzo fra un annuncio e l'altro. È un risultato molto solido, e significa che la superficie, la zona e una manciata di caratteristiche dell'immobile bastano quasi interamente a determinare quanto costa una casa a Milano: lo spazio lasciato a fattori non osservati è ridotto.
+Taken together, the model explains 91 per cent of the differences in price between one listing and another. That is a very solid result, and it means that floor area, zone and a handful of property characteristics are almost entirely enough to determine what a home costs in Milan: the room left for unobserved factors is small.
 
-### I due risultati controintuitivi
+### The two counter-intuitive results
 
-Il primo riguarda il numero di locali, che non influenza il prezzo in alcun modo apprezzabile. A parità di superficie, di numero di bagni e di quartiere, avere tre stanze anziché due non cambia quanto costa la casa. Non si tratta di un risultato incerto per mancanza di dati: il modello stabilisce che l'effetto reale è compreso fra −0,9% e +0,5%, escludendolo quindi in entrambe le direzioni. Quello che si paga sono i metri quadri, non il modo in cui vengono suddivisi.
+The first concerns the number of rooms, which does not influence price in any appreciable way. For the same floor area, number of bathrooms and neighbourhood, having three rooms rather than two does not change what the home costs. This is not a result left uncertain for want of data: the model establishes that the true effect lies between −0.9% and +0.5%, ruling it out in both directions. What you pay for is the square metres, not the way they are divided up.
 
-C'è anche una spiegazione per il fatto che, prima di considerare il quartiere, il numero di locali sembrava invece contare qualcosa. Gli appartamenti tagliati in molte stanze piccole sono caratteristici di certe zone della città, e quindi il numero di locali stava funzionando da indicatore indiretto della posizione, non da caratteristica dotata di un valore proprio. Quando la posizione entra esplicitamente nel modello, quell'informazione diventa superflua.
+There is also an explanation for why, before the neighbourhood was taken into account, the number of rooms did appear to matter. Flats carved into many small rooms are characteristic of certain areas of the city, so the room count was acting as an indirect indicator of location rather than as a characteristic with a value of its own. Once location enters the model explicitly, that information becomes redundant.
 
-Il secondo risultato riguarda il piano ed è il caso opposto. Senza tenere conto della zona, il piano sembrava non contare quasi nulla; una volta introdotto il controllo per il quartiere, il suo effetto si quadruplica. La ragione è che i palazzi alti si trovano tanto nei quartieri più costosi quanto nelle periferie di edilizia popolare, e i due gruppi si annullavano a vicenda mascherando l'effetto reale. È un caso in cui guardare i dati con più attenzione non ridimensiona un effetto, ma lo fa emergere.
+The second result concerns the floor and is the opposite case. Without accounting for the zone, the floor appeared to matter almost not at all; once the control for neighbourhood was introduced, its effect quadrupled. The reason is that tall buildings are found both in the most expensive neighbourhoods and in the social-housing outskirts, and the two groups cancelled each other out, masking the real effect. It is a case in which looking at the data more carefully does not shrink an effect but brings it out.
 
 ---
 
-## Il peso dell'indirizzo
+## The weight of the address
 
-Se c'è un risultato che l'analisi stabilisce senza margini di ambiguità, è quanto conti la posizione.
+If there is one result the analysis establishes without any ambiguity, it is how much location matters.
 
-Confrontando fra loro le 32 macrozone in cui è suddivisa la città, si scopre che la sola appartenenza a una zona spiega il 55,6 per cento della variabilità del prezzo al metro quadro. Vale la pena soffermarsi su cosa significhi: dopo aver già tolto di mezzo la superficie — perché si ragiona al metro quadro — più della metà di ciò che distingue un annuncio da un altro è pura geografia.
+Comparing the 32 macro-zones into which the city is divided, it turns out that zone membership alone explains 55.6 per cent of the variability in price per square metre. It is worth pausing on what that means: having already removed floor area from the picture — because we are working per square metre — more than half of what distinguishes one listing from another is pure geography.
 
-Il divario fra gli estremi è di 3,6 volte: si passa dai 3.216 euro al metro quadro della zona di Bisceglie, Baggio e Olmi agli 11.481 euro del Centro.
+The gap between the extremes is a factor of 3.6, running from the 3,216 euros per square metre of the Bisceglie, Baggio and Olmi zone to the 11,481 euros of the Centro.
 
-Sarebbe però un errore concludere che la città sia divisa in due blocchi. Mettendo in fila tutte e 32 le zone dalla più economica alla più cara si ottiene una salita continua, in cui non compare alcun salto che separi un "centro" da una "periferia". Milano, sul prezzo al metro quadro, è un gradiente.
+It would be a mistake, though, to conclude that the city is split into two blocks. Lining up all 32 zones from cheapest to dearest produces a continuous climb in which no jump appears to separate a "centre" from a "periphery". On price per square metre, Milan is a gradient.
 
-Questo gradiente ha però una forma asimmetrica. La prima dozzina di zone si concentra in una fascia molto stretta, fra i 3.200 e i 4.500 euro al metro quadro: dodici zone diverse separate da appena 1.300 euro complessivi. Le ultime quattro, invece, coprono da sole quasi 2.000 euro. In fondo alla classifica i quartieri si somigliano al punto che spesso non è possibile distinguerli statisticamente l'uno dall'altro; in cima si distanziano rapidamente.
+That gradient does, however, have an asymmetric shape. The first dozen zones are packed into a very narrow band, between 3,200 and 4,500 euros per square metre: twelve different zones separated by barely 1,300 euros in total. The last four, by contrast, cover almost 2,000 euros on their own. At the bottom of the ranking the neighbourhoods resemble one another to the point that it is often impossible to tell them apart statistically; at the top they pull away quickly.
 
-C'è infine un terzo aspetto, meno immediato ma altrettanto solido: più una zona è cara, più è imprevedibile al proprio interno. Nelle zone periferiche i prezzi sono compressi in una fascia ristretta, mentre in centro la stessa fascia è circa cinque volte più ampia. Comprare in centro non significa soltanto pagare di più, ma anche entrare in un mercato in cui i prezzi di due immobili apparentemente simili possono divergere in misura considerevole.
+There is finally a third aspect, less immediate but no less solid: the dearer a zone is, the more unpredictable it is internally. In outlying areas prices are compressed into a narrow band, whereas in the centre that same band is about five times wider. Buying in the centre means not only paying more, but entering a market in which the prices of two apparently similar properties can diverge considerably.
 
-### Metà del valore "di lusso" è in realtà l'indirizzo
+### Half of the "luxury" value is really the address
 
-Il risultato più istruttivo emerge confrontando lo stesso modello stimato due volte, una senza e una con l'informazione sul quartiere.
+The most instructive result emerges from comparing the same model estimated twice, once without and once with the information about the neighbourhood.
 
-| | senza informazione sul quartiere | con informazione sul quartiere |
+| | without neighbourhood information | with neighbourhood information |
 |---|---|---|
-| premio del segmento di lusso | +97% | +44% |
-| premio dell'ascensore | +12,7% | +8,2% |
+| luxury segment premium | +97% | +44% |
+| lift premium | +12.7% | +8.2% |
 
-Il premio associato al segmento di lusso si dimezza. Quello che nel primo modello appariva come il valore di un immobile di pregio era, per più della metà, semplicemente il valore del quartiere in cui quell'immobile si trova. Lo stesso meccanismo, in misura minore, riguarda l'ascensore.
+The premium attached to the luxury segment halves. What appeared in the first model as the value of a prestige property was, for more than half, simply the value of the neighbourhood it stands in. The same mechanism, to a lesser degree, applies to the lift.
 
 ---
 
-## La mappa
+## The map
 
-Il risultato conclusivo del lavoro è una mappa interattiva della città, contenuta nel file `milano-3d.html`, che si apre con un doppio clic in qualunque browser e funziona anche senza connessione a internet. La città è suddivisa negli 88 quartieri ufficiali del Comune di Milano, i cosiddetti NIL o Nuclei d'Identità Locale.
+The final output of the work is an interactive map of the city, in the file `milano-3d.html`, which opens with a double click in any browser and works without an internet connection. The city is divided into the 88 official zones of the Municipality of Milan, known as NIL, or *Nuclei d'Identità Locale*.
 
-Ogni quartiere è rappresentato da un blocco la cui altezza corrisponde al prezzo. La mappa può essere consultata in tre dimensioni oppure in versione piatta, e passando il puntatore sopra una zona se ne leggono i valori esatti.
+Each zone is drawn as a block whose height corresponds to the price. The map can be viewed in three dimensions or flat, and hovering over a zone shows its exact figures.
 
-La mappa copre 16.333 annunci sui 16.346 disponibili, e rappresenta 78 delle 88 zone. Le dieci zone escluse meritano una spiegazione: nove hanno meno di dieci annunci ciascuna e una, Stephenson, non ne ha nemmeno uno. Sono lasciate in grigio anziché colorate, perché un prezzo calcolato su quattro immobili non è confrontabile con uno calcolato su ottocento, e colorarle allo stesso modo delle altre significherebbe far apparire come un dato quella che è poco più di un'impressione.
+The map covers 16,333 of the 16,346 available listings and represents 78 of the 88 zones. The ten excluded zones deserve an explanation: nine have fewer than ten listings each and one, Stephenson, has none at all. They are left grey rather than coloured, because a price computed from four properties is not comparable with one computed from eight hundred, and colouring them the same way as the others would make what is little more than an impression look like a measurement.
 
-### Perché il prezzo medio di una zona è ambiguo
+### Why a zone's average price is ambiguous
 
-La parte più interessante della mappa nasce da un problema di interpretazione.
+The most interesting part of the map arises from a problem of interpretation.
 
-Il prezzo medio di un quartiere mescola due informazioni distinte: quanto vale trovarsi in quel punto della città, e come sono fatte le case che vi si trovano. Le due cose non sono indipendenti, perché nelle zone più costose le case sono anche mediamente più grandi e più ristrutturate. Di conseguenza il prezzo medio fa apparire quelle zone ancora più care di quanto la sola posizione giustificherebbe.
+The average price of a neighbourhood mixes two distinct pieces of information: what it is worth to be in that part of the city, and what the homes located there are like. The two are not independent, because in the more expensive zones the homes are also on average larger and better renovated. As a result, the average price makes those zones look even dearer than location alone would justify.
 
-Per separare i due effetti la mappa offre una seconda lettura, che consiste nel calcolare quanto costerebbe uno stesso identico appartamento — 80 metri quadri, tre locali, un bagno, ristrutturato, al secondo piano con ascensore — se si trovasse in ciascun quartiere. Fissando le caratteristiche dell'immobile, l'unica cosa che resta a variare è la posizione, e tutti i quartieri finiscono per essere misurati con lo stesso metro.
+To separate the two effects, the map offers a second reading: what the same identical flat — 80 square metres, three rooms, one bathroom, renovated, on the second floor with a lift — would cost in each neighbourhood. By fixing the characteristics of the property, the only thing left to vary is the location, and every neighbourhood ends up measured with the same yardstick.
 
-Il confronto fra le due letture cambia la classifica.
+Comparing the two readings changes the ranking.
 
-| quartiere | prezzo medio | stesso appartamento |
+| neighbourhood | mean price | same flat |
 |---|---|---|
-| Brera | € 12.303 | € 8.672 |
-| Tre Torri | € 11.754 | € 7.796 |
-| Duomo | € 11.080 | € 8.411 |
-| Parco Bosco in Città | € 2.904 | € 3.736 |
+| Brera | € 12,303 | € 8,672 |
+| Tre Torri | € 11,754 | € 7,796 |
+| Duomo | € 11,080 | € 8,411 |
+| Parco Bosco in Città | € 2,904 | € 3,736 |
 
-Tre Torri perde quasi 4.000 euro al metro quadro e scende dal secondo al terzo posto, superata dal Duomo. Il suo prezzo medio molto elevato non dipende infatti dalla posizione quanto dal fatto che in quella zona gli appartamenti sono in media di 179 metri quadri e di costruzione recente. A parità di immobile, Tre Torri vale meno di quanto il prezzo medio lasci intendere.
+Tre Torri loses almost 4,000 euros per square metre and drops from second to third place, overtaken by Duomo. Its very high average price depends not so much on location as on the fact that flats there average 179 square metres and are of recent construction. For a like-for-like property, Tre Torri is worth less than its average price suggests.
 
-Parco Bosco in Città si comporta in modo esattamente opposto e guadagna 832 euro al metro quadro. Il suo prezzo medio è basso perché in quella zona si vendono case grandi, che al metro quadro costano meno; a parità di immobile, il quartiere vale più di quanto sembri.
+Parco Bosco in Città behaves in exactly the opposite way and gains 832 euros per square metre. Its average price is low because large houses are sold there, and large houses cost less per square metre; for a like-for-like property, the neighbourhood is worth more than it seems.
 
-Nessuna delle due letture è quella "giusta", perché rispondono a due domande diverse: quanto costano le case in un quartiere, e quanto vale abitare in quel quartiere.
+Neither reading is the "right" one, because they answer two different questions: what homes cost in a neighbourhood, and what it is worth to live in that neighbourhood.
 
-### Una combinazione che a Milano non esiste
+### A combination that does not exist in Milan
 
-La visualizzazione tridimensionale mostra due variabili contemporaneamente: l'altezza dei blocchi rappresenta il prezzo, mentre il colore rappresenta la dimensione media degli appartamenti. Questo permette di individuare quali combinazioni delle due variabili esistano realmente in città.
+The three-dimensional view shows two variables at once: the height of the blocks represents the price, while the colour represents the average size of the flats. This makes it possible to see which combinations of the two variables actually occur in the city.
 
-Le zone con case grandi ed economiche esistono, e si trovano tutte in periferia. Esistono anche le zone con case grandi e costose, e corrispondono al centro. Non esiste invece nessuna zona con case piccole e costose: a Milano non si paga il metro quadro caro per stare stretti, lo si paga per stare in centro, dove peraltro le case sono anche grandi.
-
----
-
-## Quanto ci si può fidare di questi numeri
-
-Un'analisi seria dichiara i propri limiti con la stessa precisione con cui espone i risultati. Questi sono i limiti di cui tenere conto leggendo tutto quanto precede.
-
-I prezzi analizzati sono quelli richiesti negli annunci e non quelli effettivamente pagati. A Milano lo scarto fra richiesta e rogito è reale e, cosa più importante, non è uniforme fra le zone: non si tratta quindi di un errore che si annulla quando si confrontano quartieri diversi.
-
-I dati sono la fotografia di un singolo giorno, il 26 agosto 2026, e non una serie storica: nessuno dei risultati riguarda l'evoluzione dei prezzi nel tempo né consente previsioni. Va inoltre tenuto presente che gli annunci fotografano l'offerta ancora invenduta in quel momento, il che tende a sovrarappresentare gli immobili rimasti a lungo sul mercato rispetto a quelli venduti rapidamente.
-
-Nulla di quanto riportato descrive un rapporto di causa ed effetto. Quando si legge che l'ascensore vale un 8,2 per cento in più, non si deve intendere che installarne uno faccia aumentare il prezzo di una casa di quella percentuale. Il significato corretto è che le case dotate di ascensore costano in media l'8,2 per cento in più di case per il resto simili — e chi ha l'ascensore possiede anche, sistematicamente, un edificio di un certo tipo e di una certa epoca. La distinzione non è una formalità.
-
-Il modello è stimato su 14.639 annunci dei 16.346 disponibili, perché il 10,4 per cento presenta campi incompleti. Chi ha i campi incompleti non costituisce un campione casuale degli annunci, e questo introduce una possibile distorsione di cui non è possibile misurare l'entità.
-
-La stima di quanto costerebbe lo stesso appartamento in ciascun quartiere è, appunto, una stima, e si appoggia tanto più al modello quanto più quel tipo di casa è raro in quella zona. Nel quartiere tipico il 44 per cento degli annunci è vicino all'appartamento di riferimento, il che rende la stima ben ancorata ai dati reali. Fa eccezione Tre Torri, dove la quota scende al 10 per cento: lì il numero va letto sapendo che il modello sta estrapolando più di quanto stia leggendo i dati di quella zona.
-
-Restano infine alcune assunzioni tecniche del modello che i dati violano. Sono dichiarate apertamente nel [README](README.md), insieme alle contromisure adottate e alla verifica — condotta esplicitamente — che le conclusioni non cambiano.
+Zones with large, cheap homes exist, and they are all on the outskirts. Zones with large, expensive homes also exist, and they are the centre. What does not exist is any zone with small, expensive homes: in Milan you do not pay a high price per square metre in order to be cramped, you pay it to be in the centre, where the homes happen to be large as well.
 
 ---
 
-## Come è stato realizzato il lavoro
+## How far these figures can be trusted
 
-L'analisi si articola in dieci fasi, che vanno dalla statistica descrittiva alla regressione lineare multipla fino alla costruzione della mappa, ed è interamente contenuta in un unico script Python, `milano_analysis.py`, che può essere rieseguito da capo per riprodurre ogni numero citato in questo documento.
+A serious analysis states its limits with the same precision it uses for its results. These are the limits to bear in mind when reading everything above.
 
-Il dataset di partenza, estratto il 26 agosto 2026, conteneva 18.017 righe, ridotte a 16.346 dalla fase di pulizia. Le 1.671 righe scartate comprendono annunci di progetti multi-unità che ripetevano lo stesso prezzo decine di volte, immobili non residenziali e casi già segnalati come anomali dalla fonte stessa.
+The prices analysed are those asked in the listings, not those actually paid. In Milan the gap between asking price and completion price is real and, more importantly, it is not uniform across zones: this is therefore not an error that cancels out when different neighbourhoods are compared.
 
-Ogni decisione presa durante la pulizia è documentata con il conteggio delle righe prima e dopo, comprese le operazioni che si sono rivelate inutili una volta eseguite. Il dettaglio completo, insieme alla discussione dei metodi statistici impiegati in ciascuna fase, si trova nel [README](README.md).
+The data are a snapshot of a single day, 26 August 2026, and not a time series: none of the results concerns how prices evolve, nor supports any forecast. It is also worth keeping in mind that listings capture the supply still unsold at that moment, which tends to over-represent properties that have sat on the market a long time relative to those that sold quickly.
+
+Nothing reported here describes a cause-and-effect relationship. When you read that a lift is worth 8.2 per cent more, it does not mean that installing one would raise a home's price by that percentage. The correct meaning is that homes with a lift cost on average 8.2 per cent more than otherwise similar homes — and a property with a lift also has, systematically, a building of a certain kind and a certain age. The distinction is not a formality.
+
+The model is estimated on 14,639 of the 16,346 available listings, because 10.4 per cent have incomplete fields. Those with incomplete fields are not a random sample of the listings, and this introduces a possible bias whose size cannot be measured.
+
+The estimate of what the same flat would cost in each neighbourhood is, precisely, an estimate, and it leans on the model the more that type of home is rare in that zone. In the typical neighbourhood 44 per cent of listings are close to the reference flat, which anchors the estimate firmly to real data. The exception is Tre Torri, where the share falls to 10 per cent: there the figure should be read knowing that the model is extrapolating more than it is reading that zone's own data.
+
+Some technical assumptions of the model are, finally, violated by the data. They are stated openly in the [README](README.md), together with the countermeasures adopted and the explicit check that the conclusions do not change.
+
+---
+
+## How the work was carried out
+
+The analysis is organised into ten phases, running from descriptive statistics through multiple linear regression to the construction of the map, and is contained entirely in a single Python script, `milano_analysis.py`, which can be re-run from scratch to reproduce every figure quoted in this document.
+
+The starting dataset, extracted on 26 August 2026, contained 18,017 rows, reduced to 16,346 by the cleaning phase. The 1,671 rows discarded include listings for multi-unit developments that repeated the same price dozens of times, non-residential properties, and cases already flagged as anomalous by the source itself.
+
+Every decision taken during cleaning is documented with the row count before and after, including the operations that turned out to be unnecessary once carried out. The full detail, together with a discussion of the statistical methods used in each phase, is in the [README](README.md).
