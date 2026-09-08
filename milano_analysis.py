@@ -10,6 +10,21 @@ import seaborn as sns
 from statsmodels.stats.diagnostic import het_breuschpagan
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+# matplotlib's defaults size text for a figure viewed at its natural size. These
+# are read scaled down — on GitHub, and on a phone where the feed is about 350px
+# wide — so everything is set a few points larger than the default.
+plt.rcParams.update({
+    'font.size': 13,
+    'axes.titlesize': 16,
+    'axes.titleweight': 'semibold',
+    'axes.labelsize': 13,
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11,
+    'legend.fontsize': 12,
+    'figure.constrained_layout.use': False,
+    'savefig.bbox': 'tight',
+})
+
 # load data
 df_raw = pd.read_csv('immobiliare_milano_vendita.csv')
 
@@ -346,7 +361,9 @@ def plot_hist(df_clean):
     mean = hist_data.mean()
     median = hist_data.median()
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    # stacked rather than side by side: three panels in a row make a 3:1 strip
+    # in which nothing survives being scaled down
+    fig, axes = plt.subplots(3, 1, figsize=(9, 12))
     axes[0].hist(hist_data['price'], bins=30)
     axes[0].set_title('Price')
     axes[0].set_ylabel('Frequency')
@@ -926,12 +943,14 @@ def plot_macrozone_boxplots(df_clean):
         for macrozone in macrozone_order
     ]
 
-    plt.figure(figsize=(16, 8))
-    plt.boxplot(data, tick_labels=macrozone_order)
+    # horizontal, so the 32 zone names read left to right instead of rotated
+    # 90 degrees. The names are long, and vertical they cost more height than
+    # the plot itself and become unreadable as soon as the figure is scaled.
+    plt.figure(figsize=(11, 13))
+    plt.boxplot(data, tick_labels=macrozone_order, vert=False)
     plt.title('Price per m² by Macrozone')
-    plt.xlabel('Macrozone')
-    plt.ylabel('Price per m² (€ / m²)')
-    plt.xticks(rotation=90)
+    plt.xlabel('Price per m² (€ / m²)')
+    plt.grid(axis='x', alpha=0.3)
 
     plt.tight_layout()
     plt.savefig('charts/macrozone_boxplots.png', dpi=150)
@@ -1117,12 +1136,13 @@ def plot_linear_regression(df_clean, model):
     y = regression_data['price']
     predicted = model.predict(sm.add_constant(x))
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(9, 8))
     plt.scatter(x, y, alpha=0.3)
     plt.plot(x, predicted, color='red')
     plt.title('Linear Regression: Price vs Surface')
     plt.xlabel('Surface (m²)')
     plt.ylabel('Price (€)')
+    plt.grid(alpha=0.3)
 
     plt.tight_layout()
     plt.savefig('charts/linear_regression.png', dpi=150)
@@ -1517,7 +1537,7 @@ def plot_zone_control(without_zone, model):
     height = 0.38
 
     # the axis is inverted below, so the smaller offset is the upper bar
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(9, 6.5))
     plt.barh(position - height / 2, before, height, label='without zone')
     plt.barh(position + height / 2, after, height, label='with zone')
 
