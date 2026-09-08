@@ -1498,6 +1498,46 @@ def zone_variance_share(regression_data, model):
     print('Adjusted R-squared with zone:', model.rsquared_adj)
     print('Difference:', model.rsquared_adj - without_zone.rsquared_adj)
 
+    return without_zone
+
+
+def plot_zone_control(without_zone, model):
+
+    # the two premiums are read as separate bars rather than one bar split in
+    # two: the coefficients are multiplicative in log space, so the share the
+    # neighbourhood accounts for is not the arithmetic difference of the two
+    coefficients = ['luxury', 'elevator']
+    labels = ['Luxury segment', 'Lift in the building']
+
+    before = [(np.exp(without_zone.params[name]) - 1) * 100
+              for name in coefficients]
+    after = [(np.exp(model.params[name]) - 1) * 100 for name in coefficients]
+
+    position = np.arange(len(coefficients))
+    height = 0.38
+
+    # the axis is inverted below, so the smaller offset is the upper bar
+    plt.figure(figsize=(10, 5))
+    plt.barh(position - height / 2, before, height, label='without zone')
+    plt.barh(position + height / 2, after, height, label='with zone')
+
+    for y, value in zip(position - height / 2, before):
+        plt.text(value + 1, y, f'+{value:.1f}%', va='center')
+
+    for y, value in zip(position + height / 2, after):
+        plt.text(value + 1, y, f'+{value:.1f}%', va='center')
+
+    plt.yticks(position, labels)
+    plt.gca().invert_yaxis()  # the luxury result is the headline: keep it on top
+    plt.xlim(0, max(before) * 1.15)
+    plt.xlabel('Premium on price (%)')
+    plt.title('Premium before and after controlling for zone')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig('charts/zone_control.png', dpi=150)
+    plt.show()
+
 
 def conclusions_phase(regression_data, model):
 
@@ -1515,8 +1555,10 @@ def conclusions_phase(regression_data, model):
     print('Not significant predictors:', list(not_significant.index))
     print('\n')
 
-    zone_variance_share(regression_data, model)
+    without_zone = zone_variance_share(regression_data, model)
     print('\n')
+
+    plot_zone_control(without_zone, model)
 
     return conclusions
 
@@ -1588,9 +1630,25 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
   #spin-sec[hidden]{display:none}
   #compass .deg{margin-top:4px;font-size:11px;color:var(--ink-2);
                 text-align:center;font-variant-numeric:tabular-nums}
+  /* phones: the panel is an overlay, and on a narrow screen an overlay
+     stretched from edge to edge simply covers the map. Map and panel are
+     stacked into two bands instead, so neither can hide the other.
+     dvh, not vh: on iOS vh counts the area behind the browser chrome. */
   @media(max-width:820px){
-    #panel{width:auto;right:20px}
+    body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+    #map{position:relative;inset:auto;flex:1 1 auto;min-height:200px}
+    #panel{position:relative;top:auto;left:auto;right:auto;width:auto;
+           flex:0 1 auto;min-height:0;max-height:48vh;max-height:48dvh;
+           border-radius:0;border-width:1px 0 0;box-shadow:none;
+           overscroll-behavior:contain}
+    /* one scroll, not a scrollable list inside a scrollable panel */
+    .list{max-height:none}
     #compass{display:none}
+  }
+  /* phone held sideways: a horizontal band would leave the map a sliver */
+  @media(max-width:820px) and (orientation:landscape){
+    body{flex-direction:row}
+    #panel{flex:0 0 292px;max-height:none;border-width:0 0 0 1px}
   }
 </style>
 </head>
@@ -1893,14 +1951,25 @@ function refresh() {
 var rose = document.getElementById('rose');
 var degrees = document.getElementById('cp-deg');
 
+// the zoom levels below are chosen for a desktop window. Milan is about 0.24°
+// of longitude across, which at zoom 10.7 needs some 570px: on a phone the
+// city would simply run off both sides. Cap every zoom to what fits instead.
+var CITY_SPAN_LON = 0.28; // degrees, the city plus a margin
+
+function fitZoom(preferred) {
+  var fits = Math.log2(360 * window.innerWidth / (512 * CITY_SPAN_LON));
+  return Math.min(preferred, fits);
+}
+
 // zooming out past the city is never useful: there is no basemap under the
-// zones, so it would only shrink Milan into an empty screen
-var MIN_ZOOM = 10;
+// zones, so it would only shrink Milan into an empty screen. On a narrow
+// screen the floor has to go below 10, or it would clamp the fitted zoom.
+var MIN_ZOOM = Math.min(10, fitZoom(10.7));
 
 var viewState = {
   longitude: 9.19,
   latitude: 45.44,
-  zoom: 10.7,
+  zoom: fitZoom(10.7),
   pitch: 50,
   bearing: -20,
   minZoom: MIN_ZOOM
@@ -2220,7 +2289,7 @@ function clearSelection() {
     {
       longitude: 9.19,
       latitude: view === '3d' ? 45.44 : 45.46,
-      zoom: view === '3d' ? 10.7 : 11.2,
+      zoom: fitZoom(view === '3d' ? 10.7 : 11.2),
       bearing: 0,
       pitch: view === '3d' ? 50 : 0
     },
@@ -2304,9 +2373,9 @@ function setView(next, animate) {
     stopSpin();
 
     if (view === '2d') {
-      animateTo({pitch: 0, bearing: 0, zoom: 11.2}, 700);
+      animateTo({pitch: 0, bearing: 0, zoom: fitZoom(11.2)}, 700);
     } else {
-      animateTo({pitch: 45, zoom: 10.9}, 700);
+      animateTo({pitch: 45, zoom: fitZoom(10.9)}, 700);
     }
   }
 
