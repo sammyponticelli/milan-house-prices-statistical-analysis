@@ -2,9 +2,11 @@
 
 > 🇬🇧 English version: **[README.md](README.md)**
 
+> 🗺️ **[Esplora la mappa 3D interattiva →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html)** — si apre nel browser, non serve scaricare nulla.
+
 **Quali fattori influenzano il prezzo delle case a Milano, e cosa può dirci l'analisi statistica sul mercato immobiliare?**
 
-L'analisi lavora su ~18k annunci di vendita raccolti da immobiliare.it e percorre l'intero strumentario statistico — dalla statistica descrittiva alla regressione lineare multipla — per arrivare a una **mappa interattiva del prezzo per zona**, in `milano-3d.html`.
+L'analisi lavora su ~18k annunci di vendita raccolti da immobiliare.it e percorre l'intero strumentario statistico — dalla statistica descrittiva alla regressione lineare multipla — per arrivare a una **mappa interattiva del prezzo per zona**, in [`milano-3d.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html).
 
 Il resoconto dei risultati, in forma leggibile senza conoscenze statistiche, è in **[REPORT.it.md](REPORT.it.md)**. Questo file documenta i dati, il metodo e le decisioni tecniche.
 

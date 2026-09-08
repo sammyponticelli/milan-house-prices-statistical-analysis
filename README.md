@@ -2,9 +2,11 @@
 
 > 🇮🇹 Versione italiana: **[README.it.md](README.it.md)**
 
+> 🗺️ **[Explore the interactive 3D map →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html)** — runs in the browser, nothing to download.
+
 **Which factors drive house prices in Milan, and what can statistical analysis tell us about the property market?**
 
-The analysis works on ~18k sale listings collected from immobiliare.it and walks through the whole statistical toolkit — from descriptive statistics to multiple linear regression — to arrive at an **interactive map of price by zone**, in `milano-3d.html`.
+The analysis works on ~18k sale listings collected from immobiliare.it and walks through the whole statistical toolkit — from descriptive statistics to multiple linear regression — to arrive at an **interactive map of price by zone**, in [`milano-3d.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html).
 
 The write-up of the results, in a form readable without any background in statistics, is in **[REPORT.md](REPORT.md)**. This file documents the data, the method and the technical decisions.
 
