@@ -1675,6 +1675,15 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
   #spin-sec[hidden]{display:none}
   #compass .deg{margin-top:4px;font-size:11px;color:var(--ink-2);
                 text-align:center;font-variant-numeric:tabular-nums}
+  #full{top:20px;right:20px;width:38px;height:38px;padding:0;display:grid;
+        place-items:center;border:1px solid var(--line);background:var(--panel);
+        color:var(--ink-2);cursor:pointer}
+  #full:hover{border-color:var(--line-2);color:var(--ink)}
+  #full[hidden]{display:none}
+  #full svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;
+            stroke-linecap:round;stroke-linejoin:round}
+  #full .exit,#full.on .enter{display:none}
+  #full.on .exit{display:block}
   /* phones: the panel is an overlay, and on a narrow screen an overlay
      stretched from edge to edge simply covers the map. Map and panel are
      stacked into two bands instead, so neither can hide the other.
@@ -1696,6 +1705,8 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
     body{flex-direction:row}
     #panel{flex:0 0 292px;max-height:none;border-width:0 0 0 1px}
     #panel-body{max-height:100dvh}
+    /* the panel takes the right edge here, so the button cannot stay there */
+    #full{right:312px}
   }
 </style>
 </head>
@@ -1772,6 +1783,18 @@ MAP_TEMPLATE = '''<!DOCTYPE html>
 
   <div id="grip" title="Drag to resize the panel"></div>
 </div>
+
+<button id="full" class="card" type="button" aria-pressed="false"
+        title="Full screen" aria-label="Full screen">
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <g class="enter">
+      <path d="M4 7.5V4h3.5M12.5 4H16v3.5M16 12.5V16h-3.5M7.5 16H4v-3.5"/>
+    </g>
+    <g class="exit">
+      <path d="M7.5 4v3.5H4M16 7.5h-3.5V4M12.5 16v-3.5H16M4 12.5h3.5V16"/>
+    </g>
+  </svg>
+</button>
 
 <button id="compass" class="card" type="button" title="Put north back up"
         aria-label="Compass: click to put north back up">
@@ -2171,6 +2194,34 @@ button.addEventListener('click', function () {
   button.setAttribute('aria-pressed', 'true');
   requestAnimationFrame(spin);
 });
+
+var fullButton = document.getElementById('full');
+
+// iPhone Safari has no fullscreen outside <video>, so there the control is
+// hidden rather than offered and left dead
+if (!document.documentElement.requestFullscreen) {
+  fullButton.hidden = true;
+} else {
+  fullButton.addEventListener('click', function () {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  });
+
+  // driven by the event, not by the click: Esc and the browser's own chrome
+  // can leave fullscreen without ever going through the button
+  document.addEventListener('fullscreenchange', function () {
+    var on = document.fullscreenElement !== null;
+    var label = on ? 'Leave full screen' : 'Full screen';
+
+    fullButton.classList.toggle('on', on);
+    fullButton.setAttribute('aria-pressed', String(on));
+    fullButton.setAttribute('aria-label', label);
+    fullButton.title = label;
+  });
+}
 
 // the panel rolls up to its title bar, and its right edge drags like a window
 var panel = document.getElementById('panel');
