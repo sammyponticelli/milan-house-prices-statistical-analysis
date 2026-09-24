@@ -618,6 +618,67 @@ It is worth being clear about what the map is not. It is a coup d'œil and not a
 
 ---
 
+## What comes next: the dashboard
+
+Phases 1 to 10 answer a question about the data that exists. The four phases below answer a question the data cannot answer on its own, because they bring in a second source — and they end in something publishable rather than in a chart.
+
+The premise is the weakness phase 9 declared and never resolved: **these are the prices sellers ask, not the prices buyers pay.** The Agenzia delle Entrate publishes the OMI quotations twice a year, derived from registered deeds, so they describe what actually gets concluded. The difference between the two, zone by zone, is a figure nobody publishes and that anyone buying, selling or mediating in Milan has a use for: *in this neighbourhood sellers ask twelve per cent more than what closes.*
+
+These phases are **not yet carried out**. What follows is the plan, written before the work rather than after it, including the three places where it is most likely to go wrong.
+
+### Phase 11 — OMI quotations, the second source
+
+**Planned.** The source publishes, per province and per OMI zone, a minimum and a maximum price per square metre for each combination of typology — *abitazioni civili*, *economiche*, *di tipo signorile*, *ville* — and state of conservation — *normale*, *ottimo*, *scadente*. Note what that means: not a point estimate but a band, and one that is revised every semester, so the semester used has to be recorded alongside every figure derived from it.
+
+Three traps sit in this phase, and all three are methodological rather than technical, which is what makes them easy to walk into.
+
+**The definition of surface area is not the same in the two sources.** OMI quotes per square metre of *superficie lorda*, which includes walls and a share of the common parts; listing portals quote *superficie commerciale*, and sometimes something closer to net. Comparing the two as if they were the same measure inflates the gap by a systematic amount that has nothing to do with the market — it is an artefact of definitions. Either the conversion is applied and stated, or the comparison stays strictly relative.
+
+**A band is not a number.** Collapsing an OMI cell to its midpoint and publishing a single percentage throws away the source's own statement of its uncertainty. Whatever gets shown, the band travels with it.
+
+**Typology and state have to be matched, not assumed.** Comparing every listing against *abitazioni civili, stato normale* silently mixes in the luxury segment, which phase 8 established is worth +44% on its own. The reference-flat construction of phase 10 already solves this, and it is worth seeing why: by fixing a property and letting only location vary, it produces exactly the object an OMI cell prices.
+
+### Phase 12 — Joining two geographies that do not match
+
+**Planned.** Phase 10 got lucky. The CSV already carried a `nil_id` column, so assigning listings to zones collapsed into a `groupby` and neither `shapely` nor `geopandas` were needed. That luck does not repeat: OMI has its own zoning, with its own codes and bands, and it does not coincide with the 88 NIL. This is the hardest of the four phases and the likeliest place for the whole thing to go quietly wrong.
+
+The join is areal rather than point-based, because two sets of polygons partition the same city differently and a value defined on one has to be re-expressed on the other. The defensible method is area-weighted interpolation — for each NIL, the OMI zones overlapping it, weighted by overlapping area — and it rests on an assumption that should be said out loud rather than buried: that price is uniform inside an OMI zone. It is not. That is precisely why OMI zones exist.
+
+So this phase produces two things, not one. The crosswalk, and **a measure of how much to trust each row of it**: for every NIL, how many OMI zones it draws on and what share of its area the dominant one covers. Where a NIL sits cleanly inside a single OMI zone the resulting figure is solid; where it is spliced together from four, it is an average of averages and has to be marked as such rather than coloured as though it were a measurement. This is the same discipline as the ten-listing threshold of phase 10, applied to a different failure mode.
+
+This is also the phase that introduces the project's first real geometry dependency, `geopandas` and `shapely`, which go into `requirements.txt` pinned exactly like the rest.
+
+### Phase 13 — The gap between asking and transacting
+
+**Planned.** Once both sources sit on the same geography the gap is a subtraction, and it is the entire point of the exercise. Four things have to come out of it.
+
+The gap per NIL, **as a band rather than a point**, with both the OMI semester and the listings date stated next to it.
+
+The ranking, because the interesting result is not the city-wide average but the spread. If the gap turns out to be roughly uniform across Milan, that is a boring finding and has to be reported as boring. If it varies by a factor of two between zones, that is the headline.
+
+A check on the obvious confounder. Listings capture supply still *unsold*, which over-represents property that has sat on the market — so a zone with a wide gap may simply be a zone with slow-moving stock rather than one with optimistic sellers. Phase 9 already declared this limit in general terms; here it becomes something that can actually be tested, against the width of the OMI band and the share of long-standing listings.
+
+And the small-sample problem, which returns unchanged. The nine zones below ten listings cannot carry a credible gap, and neither can zones whose OMI join is spliced from many fragments. Both get suppressed, by the same logic and in the same words as phase 10.
+
+Two negative outcomes are possible here and both are publishable: the gap may be near-constant across the city, or it may be too noisy to support any statement at all. Either one gets written as plainly as a positive finding would.
+
+### Phase 14 — The dashboard
+
+**Planned.** The published deliverable, and the point at which the work stops being an analysis and becomes something usable by a person who will never open a notebook. It goes where the map already lives, at the root of the Pages site.
+
+The scope is deliberately narrow — four things, and nothing else:
+
+1. the map, with the asking-versus-OMI gap as a third price variable beside the two of phase 10
+2. the gap ranking in readable text, because height seen in perspective is not a measuring instrument — the lesson phase 10 already paid for
+3. the effect of a property's characteristics at equal zone, which phase 8 estimated and which nothing so far actually shows
+4. one page stating where the data come from, as of when, and what they do not say
+
+What stays out is as important. No live filters recomputing on demand, no server, and nothing that falls asleep after ten minutes of inactivity and then makes someone wait thirty seconds after clicking a link that was just sent to them. The technical choice is the boring one and stays the boring one: precompute in Python, write a JSON, serve a static page. It already works for a 2.71 MB self-contained file, and the property that the map issues no network requests should survive this phase rather than be traded away in it.
+
+Published beats perfect. A version that exists and is honest about its limits is worth more than one still being polished.
+
+---
+
 ## Progress
 
 | Phase | Status |
@@ -633,6 +694,10 @@ It is worth being clear about what the map is not. It is a coup d'œil and not a
 | 8. Multiple Linear Regression | ✅ **complete** — adj. R² = 0.906, VIF, zone dummies, HC3 |
 | 9. Statistical Conclusions | ✅ **complete** — effects, CIs, limits declared |
 | 10. Map of price by zone | ✅ **complete** — interactive 3D/2D map, 78 zones, reference flat |
+| 11. OMI quotations | 🔲 **planned** — second source, derived from registered deeds |
+| 12. OMI ↔ NIL crosswalk | 🔲 **planned** — area-weighted join, with its own quality measured |
+| 13. Asking vs transacting gap | 🔲 **planned** — per zone, as a band, confounder tested |
+| 14. Dashboard | 🔲 **planned** — published, four panels, still no server |
 
 ---
 

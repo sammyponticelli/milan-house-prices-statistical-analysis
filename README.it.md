@@ -618,6 +618,67 @@ Vale la pena chiarire che cosa la mappa non è. È un colpo d'occhio e non uno s
 
 ---
 
+## Che cosa viene dopo: la dashboard
+
+Le fasi dalla 1 alla 10 rispondono a una domanda sui dati che ci sono. Le quattro fasi qui sotto rispondono a una domanda a cui quei dati non possono rispondere da soli, perché introducono una seconda fonte — e finiscono in qualcosa di pubblicabile, non in un grafico.
+
+La premessa è la debolezza che la fase 9 ha dichiarato senza mai risolverla: **questi sono i prezzi che i venditori chiedono, non quelli che i compratori pagano.** L'Agenzia delle Entrate pubblica due volte l'anno le quotazioni OMI, che derivano dagli atti registrati e descrivono quindi quanto si conclude davvero. La differenza fra le due, zona per zona, è un numero che nessuno pubblica e che serve a chiunque compri, venda o faccia mediazione a Milano: *in questo quartiere si chiede il dodici per cento più di quanto si conclude.*
+
+Queste fasi **non sono ancora state svolte**. Quello che segue è il piano, scritto prima del lavoro e non dopo, compresi i tre punti in cui è più probabile che vada storto.
+
+### Fase 11 — Le quotazioni OMI, la seconda fonte
+
+**Pianificata.** La fonte pubblica, per provincia e per zona OMI, un prezzo minimo e uno massimo al metro quadro per ogni combinazione di tipologia — *abitazioni civili*, *economiche*, *di tipo signorile*, *ville* — e stato di conservazione — *normale*, *ottimo*, *scadente*. Vale la pena notare che cosa significa: non una stima puntuale ma una fascia, e una fascia che viene rivista ogni semestre, quindi il semestre usato va registrato accanto a ogni numero che ne deriva.
+
+In questa fase ci sono tre trappole, e tutte tre sono metodologiche e non tecniche, che è esattamente ciò che le rende facili da imboccare.
+
+**La definizione di superficie non è la stessa nelle due fonti.** L'OMI quota al metro quadro di *superficie lorda*, che comprende i muri e una quota delle parti comuni; i portali di annunci quotano la *superficie commerciale*, e a volte qualcosa di più vicino al netto. Confrontarle come se fossero la stessa misura gonfia il divario di una quantità sistematica che non ha niente a che vedere con il mercato: è un artefatto di definizioni. O si applica la conversione e la si dichiara, oppure il confronto resta rigorosamente relativo.
+
+**Una fascia non è un numero.** Schiacciare una cella OMI sul suo valore centrale e pubblicare una singola percentuale butta via l'incertezza che la fonte dichiara da sé. Qualunque cosa si mostri, la fascia le viaggia accanto.
+
+**Tipologia e stato vanno abbinati, non dati per scontati.** Confrontare tutti gli annunci contro *abitazioni civili, stato normale* ci mescola dentro in silenzio il segmento di lusso, che la fase 8 ha stabilito valere +44% da solo. La costruzione dell'appartamento di riferimento della fase 10 risolve già il problema, e vale la pena capire perché: fissando l'immobile e lasciando variare solo la posizione, produce esattamente l'oggetto che una cella OMI quota.
+
+### Fase 12 — Unire due geografie che non coincidono
+
+**Pianificata.** Nella fase 10 è andata bene. Il CSV portava già una colonna `nil_id`, quindi assegnare gli annunci alle zone si è ridotto a un `groupby` e non sono serviti né `shapely` né `geopandas`. Quella fortuna non si ripete: l'OMI ha una sua zonizzazione, con codici e fasce propri, e non coincide con gli 88 NIL. È la più difficile delle quattro fasi e il punto in cui è più probabile che tutto vada storto senza farsi notare.
+
+L'unione è areale e non puntuale, perché due insiemi di poligoni suddividono la stessa città in modo diverso e un valore definito su uno va riespresso sull'altro. Il metodo difendibile è l'interpolazione ponderata per area — per ogni NIL, le zone OMI che lo intersecano, pesate per l'area di sovrapposizione — e poggia su un'assunzione che conviene dire a voce alta invece di seppellirla: che il prezzo sia uniforme dentro una zona OMI. Non lo è. È esattamente per questo che le zone OMI esistono.
+
+Quindi questa fase produce due cose, non una. La tabella di corrispondenza, e **una misura di quanto fidarsi di ogni sua riga**: per ciascun NIL, su quante zone OMI si appoggia e che quota della sua area copre quella dominante. Dove un NIL sta pulito dentro una sola zona OMI il numero che ne esce è solido; dove è ricucito da quattro, è una media di medie e va marcato come tale invece di essere colorato come se fosse una misura. È la stessa disciplina della soglia dei dieci annunci della fase 10, applicata a un modo diverso di sbagliare.
+
+È anche la fase che introduce la prima vera dipendenza geometrica del progetto, `geopandas` e `shapely`, che vanno in `requirements.txt` fissate esattamente come tutto il resto.
+
+### Fase 13 — Il divario fra chiesto e concluso
+
+**Pianificata.** Una volta che le due fonti stanno sulla stessa geografia il divario è una sottrazione, ed è tutto il senso dell'operazione. Da qui devono uscire quattro cose.
+
+Il divario per NIL, **come fascia e non come punto**, con accanto sia il semestre OMI sia la data degli annunci.
+
+La classifica, perché il risultato interessante non è la media cittadina ma la dispersione. Se il divario risultasse più o meno uniforme su Milano, è un risultato noioso e va riportato come noioso. Se varia di un fattore due fra una zona e l'altra, quello è il titolo.
+
+Una verifica sul confondimento ovvio. Gli annunci catturano l'offerta ancora *invenduta*, e quindi sovrarappresentano gli immobili che sono rimasti a lungo sul mercato: una zona con un divario ampio può essere semplicemente una zona in cui si vende lentamente, non una in cui i venditori sono ottimisti. La fase 9 aveva già dichiarato questo limite in generale; qui diventa una cosa che si può effettivamente mettere alla prova, contro l'ampiezza della fascia OMI e la quota di annunci vecchi.
+
+E il problema dei piccoli campioni, che torna identico. Le nove zone sotto i dieci annunci non possono portare un divario credibile, e non possono portarlo nemmeno le zone il cui abbinamento OMI è ricucito da molti frammenti. Entrambe vengono soppresse, con la stessa logica e con le stesse parole della fase 10.
+
+Qui due esiti negativi sono possibili ed entrambi sono pubblicabili: il divario può essere quasi costante in tutta la città, oppure troppo rumoroso per sostenere qualunque affermazione. In entrambi i casi si scrive con la stessa chiarezza con cui si scriverebbe un risultato positivo.
+
+### Fase 14 — La dashboard
+
+**Pianificata.** Il deliverable pubblicato, e il momento in cui il lavoro smette di essere un'analisi e diventa una cosa utilizzabile da chi non aprirà mai un notebook. Va dove la mappa sta già, alla radice del sito Pages.
+
+Il perimetro è volutamente stretto — quattro cose, e nient'altro:
+
+1. la mappa, con il divario chiesto-OMI come terza variabile di prezzo accanto alle due della fase 10
+2. la classifica del divario in testo leggibile, perché l'altezza vista in prospettiva non è uno strumento di misura: la lezione che la fase 10 ha già pagato
+3. l'effetto delle caratteristiche dell'immobile a parità di zona, che la fase 8 ha stimato e che finora non è mostrato da niente
+4. una pagina che dica da dove vengono i dati, aggiornati a quando, e che cosa non dicono
+
+Quello che resta fuori è altrettanto importante. Nessun filtro dal vivo che ricalcola a richiesta, nessun server, e niente che si addormenti dopo dieci minuti di inattività e faccia poi aspettare trenta secondi a chi ha appena cliccato un link che gli è stato appena mandato. La scelta tecnica è quella noiosa e resta quella noiosa: precalcolare in Python, scrivere un JSON, servire una pagina statica. Funziona già per un file autonomo da 2,71 MB, e la proprietà per cui la mappa non fa alcuna richiesta di rete deve sopravvivere a questa fase, non esserci barattata dentro.
+
+Pubblicata batte perfetta. Una versione che esiste e che è onesta sui propri limiti vale più di una che si sta ancora limando.
+
+---
+
 ## Avanzamento
 
 | Fase | Stato |
@@ -633,6 +694,10 @@ Vale la pena chiarire che cosa la mappa non è. È un colpo d'occhio e non uno s
 | 8. Multiple Linear Regression | ✅ **completata** — R² adj = 0,906, VIF, dummy di zona, HC3 |
 | 9. Statistical Conclusions | ✅ **completata** — effetti, IC, limiti dichiarati |
 | 10. Mappa del prezzo per zona | ✅ **completata** — mappa 3D/2D interattiva, 78 zone, appartamento tipo |
+| 11. Quotazioni OMI | 🔲 **pianificata** — seconda fonte, derivata dagli atti registrati |
+| 12. Corrispondenza OMI ↔ NIL | 🔲 **pianificata** — unione ponderata per area, con la sua qualità misurata |
+| 13. Divario chiesto/concluso | 🔲 **pianificata** — per zona, come fascia, confondimento verificato |
+| 14. Dashboard | 🔲 **pianificata** — pubblicata, quattro pannelli, sempre senza server |
 
 ---
 
