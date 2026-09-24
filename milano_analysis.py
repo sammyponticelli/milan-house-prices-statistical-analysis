@@ -2816,11 +2816,11 @@ def write_3d_map(zone_geojson, metadata):
     html = html.replace('/*METADATA*/', json.dumps(metadata))
     html = html.replace('/*LIBRARY*/', library)
 
-    with open('milano-3d.html', 'w', encoding='utf-8') as map_file:
+    with open('index.html', 'w', encoding='utf-8') as map_file:
         map_file.write(html)
 
     print('3D MAP WRITTEN')
-    print('file: milano-3d.html')
+    print('file: index.html')
     print('size MB:', round(len(html) / 1024 / 1024, 2))
 
 

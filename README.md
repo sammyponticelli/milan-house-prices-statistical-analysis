@@ -2,11 +2,11 @@
 
 > 🇮🇹 Versione italiana: **[README.it.md](README.it.md)**
 
-> 🗺️ **[Explore the interactive 3D map →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html)** — runs in the browser, nothing to download.
+> 🗺️ **[Explore the interactive 3D map →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/)** — runs in the browser, nothing to download.
 
 **Which factors drive house prices in Milan, and what can statistical analysis tell us about the property market?**
 
-The analysis works on ~18k sale listings collected from immobiliare.it and walks through the whole statistical toolkit — from descriptive statistics to multiple linear regression — to arrive at an **interactive map of price by zone**, in [`milano-3d.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html).
+The analysis works on ~18k sale listings collected from immobiliare.it and walks through the whole statistical toolkit — from descriptive statistics to multiple linear regression — to arrive at an **interactive map of price by zone**, in [`index.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/).
 
 The write-up of the results, in a form readable without any background in statistics, is in **[REPORT.md](REPORT.md)**. This file documents the data, the method and the technical decisions.
 
@@ -542,7 +542,7 @@ The zone dummies add six points of explained variance to a model that already ex
 
 ### Phase 10 — Map of price by zone
 
-**Phase complete.** The final deliverable: **`milano-3d.html`**, an interactive map of the 88 NIL of Milan (*Nuclei d'Identità Locale*, the official city zones), in two views and with two price variables. Nine functions orchestrated by `map_phase`. `milano-heatmap.html` remains in the repository as the reference map the work started from: it is not an output of this phase and its aggregates are not the ones computed here.
+**Phase complete.** The final deliverable: **`index.html`**, an interactive map of the 88 NIL of Milan (*Nuclei d'Identità Locale*, the official city zones), in two views and with two price variables. Nine functions orchestrated by `map_phase`. `milano-heatmap.html` remains in the repository as the reference map the work started from: it is not an output of this phase and its aggregates are not the ones computed here.
 
 **Point-in-polygon was not needed.** The original plan was to assign each listing to a zone by geometric intersection, since the 144 microzones and 32 macro-zones present in the CSV do not coincide with the 88 NIL. The CSV, however, already carries a `nil_id` column, and the compatibility check came out clean: 88 identifiers in common with the GeoJSON and zero mismatched names. The assignment therefore reduces to a `groupby('nil_id')`, without needing to add `shapely` or `geopandas` to the dependencies. The row of the dataset table declaring `nil_id` unused has been corrected accordingly.
 
@@ -612,7 +612,7 @@ Zooming out is finally capped at level 10, just below that of the overview: with
 
 #### The file
 
-The file `milano-3d.html` weighs 2.71 MB and is completely self-contained, because both the rendering library — deck.gl 9.4.0, in the file `deck.min.js`, with the version pinned exactly as for the Python dependencies — and the GeoJSON of the 88 zones are embedded in it. It makes no network requests and downloads no map tiles: it opens with a double click and works offline.
+The file `index.html` weighs 2.71 MB and is completely self-contained, because both the rendering library — deck.gl 9.4.0, in the file `deck.min.js`, with the version pinned exactly as for the Python dependencies — and the GeoJSON of the 88 zones are embedded in it. It makes no network requests and downloads no map tiles: it opens with a double click and works offline.
 
 It is worth being clear about what the map is not. It is a coup d'œil and not a measuring instrument, a role filled by the ranking and the tooltip. All the limits declared in phase 9 also remain in force: these are asking rather than transaction prices, a snapshot rather than a trend, and associative rather than causal relationships.
 
@@ -643,8 +643,9 @@ milano_real_estate_analysis/
 ├── milano_analysis.py                  # analysis script — cleaning + phases 1-10
 ├── immobiliare_milano_vendita.csv      # dataset (18,017 × 31)
 ├── milano_zone_NIL.geojson             # 88 NIL polygons — input of phase 10
-├── milano-3d.html                      # interactive map — output of phase 10
+├── index.html                          # interactive map — output of phase 10
 ├── deck.min.js                         # deck.gl 9.4.0, embedded in the map
+├── milano-3d.html                      # redirect, keeps the old published link alive
 ├── milano-heatmap.html                 # the 2D reference map work started from
 ├── charts/                             # figures of phases 1-8 in PNG (14 files)
 ├── REPORT.md                           # write-up of the results, for anyone
@@ -737,7 +738,7 @@ location_premium          → OLS with NIL dummies, then the same flat priced in
 value_classes             → cuts of the 5 quantile classes, one set per variable
 build_zone_geojson        → GeoJSON properties rewritten with our own aggregates
 map_metadata              → summary, cuts, reference flat
-write_3d_map              → deck.gl + GeoJSON embedded into milano-3d.html
+write_3d_map              → deck.gl + GeoJSON embedded into index.html
 ```
 
 Phase 8 returns `regression_data` together with the fitted model, which the main program passes on to phase 9: in this way the conclusions are read off the model already estimated rather than refitting it a second time.

@@ -102,7 +102,7 @@ Il premio associato al segmento di lusso si dimezza. Quello che nel primo modell
 
 ## La mappa
 
-Il risultato conclusivo del lavoro è una mappa interattiva della città, contenuta nel file `milano-3d.html`, che si apre con un doppio clic in qualunque browser e funziona anche senza connessione a internet. La città è suddivisa negli 88 quartieri ufficiali del Comune di Milano, i cosiddetti NIL o Nuclei d'Identità Locale.
+Il risultato conclusivo del lavoro è una mappa interattiva della città, contenuta nel file `index.html`, che si apre con un doppio clic in qualunque browser e funziona anche senza connessione a internet. La città è suddivisa negli 88 quartieri ufficiali del Comune di Milano, i cosiddetti NIL o Nuclei d'Identità Locale.
 
 Ogni quartiere è rappresentato da un blocco la cui altezza corrisponde al prezzo. La mappa può essere consultata in tre dimensioni oppure in versione piatta, e passando il puntatore sopra una zona se ne leggono i valori esatti.
 

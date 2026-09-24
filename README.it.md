@@ -2,11 +2,11 @@
 
 > 🇬🇧 English version: **[README.md](README.md)**
 
-> 🗺️ **[Esplora la mappa 3D interattiva →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html)** — si apre nel browser, non serve scaricare nulla.
+> 🗺️ **[Esplora la mappa 3D interattiva →](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/)** — si apre nel browser, non serve scaricare nulla.
 
 **Quali fattori influenzano il prezzo delle case a Milano, e cosa può dirci l'analisi statistica sul mercato immobiliare?**
 
-L'analisi lavora su ~18k annunci di vendita raccolti da immobiliare.it e percorre l'intero strumentario statistico — dalla statistica descrittiva alla regressione lineare multipla — per arrivare a una **mappa interattiva del prezzo per zona**, in [`milano-3d.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/milano-3d.html).
+L'analisi lavora su ~18k annunci di vendita raccolti da immobiliare.it e percorre l'intero strumentario statistico — dalla statistica descrittiva alla regressione lineare multipla — per arrivare a una **mappa interattiva del prezzo per zona**, in [`index.html`](https://sammyponticelli.github.io/milan-house-prices-statistical-analysis/).
 
 Il resoconto dei risultati, in forma leggibile senza conoscenze statistiche, è in **[REPORT.it.md](REPORT.it.md)**. Questo file documenta i dati, il metodo e le decisioni tecniche.
 
@@ -542,7 +542,7 @@ Le dummy di zona aggiungono sei punti di varianza spiegata a un modello che ne s
 
 ### Phase 10 — Mappa del prezzo per zona
 
-**Fase completata.** Il deliverable finale: **`milano-3d.html`**, mappa interattiva degli 88 NIL di Milano (*Nuclei d'Identità Locale*), in due viste e con due variabili di prezzo. Nove funzioni orchestrate da `map_phase`. `milano-heatmap.html` resta nel repository come mappa di riferimento da cui è partito il lavoro: non è un output di questa fase e i suoi aggregati non sono quelli calcolati qui.
+**Fase completata.** Il deliverable finale: **`index.html`**, mappa interattiva degli 88 NIL di Milano (*Nuclei d'Identità Locale*), in due viste e con due variabili di prezzo. Nove funzioni orchestrate da `map_phase`. `milano-heatmap.html` resta nel repository come mappa di riferimento da cui è partito il lavoro: non è un output di questa fase e i suoi aggregati non sono quelli calcolati qui.
 
 **Il point-in-polygon non è servito.** Il piano iniziale prevedeva di assegnare ogni annuncio a una zona per intersezione geometrica, dal momento che le 144 microzone e le 32 macrozone presenti nel CSV non coincidono con gli 88 NIL. Il CSV porta però già una colonna `nil_id`, e la verifica di compatibilità è risultata netta: 88 identificativi in comune con il GeoJSON e zero nomi discordanti. L'assegnazione si riduce quindi a un `groupby('nil_id')`, senza bisogno di aggiungere `shapely` o `geopandas` fra le dipendenze. La riga della tabella del dataset che dichiarava `nil_id` come inutilizzata è stata corretta di conseguenza.
 
@@ -612,7 +612,7 @@ Lo zoom in allontanamento è infine bloccato al livello 10, appena sotto quello 
 
 #### Il file
 
-Il file `milano-3d.html` pesa 2,71 MB ed è completamente autonomo, perché vi sono incorporati sia la libreria di rendering — deck.gl 9.4.0, nel file `deck.min.js`, con la versione fissata esattamente come per le dipendenze Python — sia il GeoJSON delle 88 zone. Non effettua alcuna richiesta di rete e non scarica alcun tile cartografico: si apre con un doppio clic e funziona offline.
+Il file `index.html` pesa 2,71 MB ed è completamente autonomo, perché vi sono incorporati sia la libreria di rendering — deck.gl 9.4.0, nel file `deck.min.js`, con la versione fissata esattamente come per le dipendenze Python — sia il GeoJSON delle 88 zone. Non effettua alcuna richiesta di rete e non scarica alcun tile cartografico: si apre con un doppio clic e funziona offline.
 
 Vale la pena chiarire che cosa la mappa non è. È un colpo d'occhio e non uno strumento di misura, funzione per la quale esistono la classifica e il tooltip. Restano inoltre validi tutti i limiti dichiarati nella fase 9: si tratta di prezzi richiesti e non di transazione, di un'istantanea e non di un andamento, e di relazioni associative e non causali.
 
@@ -643,8 +643,9 @@ milano_real_estate_analysis/
 ├── milano_analysis.py                  # script di analisi — pulizia + fasi 1-10
 ├── immobiliare_milano_vendita.csv      # dataset (18.017 × 31)
 ├── milano_zone_NIL.geojson             # 88 poligoni NIL — input della fase 10
-├── milano-3d.html                      # mappa interattiva — output della fase 10
+├── index.html                          # mappa interattiva — output della fase 10
 ├── deck.min.js                         # deck.gl 9.4.0, incorporato nella mappa
+├── milano-3d.html                      # redirect, tiene in vita il vecchio link
 ├── milano-heatmap.html                 # mappa 2D di riferimento di partenza
 ├── charts/                             # figure delle fasi 1-8 in PNG (14 file)
 ├── REPORT.it.md                        # resoconto dei risultati, per chiunque
@@ -738,7 +739,7 @@ location_premium          → OLS con dummy dei NIL, poi lo stesso appartamento
 value_classes             → tagli delle 5 classi per quantile, una per variabile
 build_zone_geojson        → properties del GeoJSON riscritte con i propri aggregati
 map_metadata              → riepilogo, tagli, appartamento di riferimento
-write_3d_map              → deck.gl + GeoJSON incorporati in milano-3d.html
+write_3d_map              → deck.gl + GeoJSON incorporati in index.html
 ```
 
 La fase 8 restituisce `regression_data` insieme al modello stimato, che il programma principale passa alla fase 9: in questo modo le conclusioni si leggono dal modello già stimato anziché rifittarlo una seconda volta.

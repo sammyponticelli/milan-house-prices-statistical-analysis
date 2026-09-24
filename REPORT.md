@@ -102,7 +102,7 @@ The premium attached to the luxury segment halves. What appeared in the first mo
 
 ## The map
 
-The final output of the work is an interactive map of the city, in the file `milano-3d.html`, which opens with a double click in any browser and works without an internet connection. The city is divided into the 88 official zones of the Municipality of Milan, known as NIL, or *Nuclei d'Identità Locale*.
+The final output of the work is an interactive map of the city, in the file `index.html`, which opens with a double click in any browser and works without an internet connection. The city is divided into the 88 official zones of the Municipality of Milan, known as NIL, or *Nuclei d'Identità Locale*.
 
 Each zone is drawn as a block whose height corresponds to the price. The map can be viewed in three dimensions or flat, and hovering over a zone shows its exact figures.
 
